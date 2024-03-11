@@ -50,9 +50,9 @@ class MockComStock:
         filePath = None
         path = args[0]
         if "EJSCREEN" in path:
-            filePath = "./truth_data/v01/EPA/EJSCREEN/EJSCREEN_Tract_2020_USPR.csv"
+            filePath = "/truth_data/v01/EPA/EJSCREEN/EJSCREEN_Tract_2020_USPR.csv"
         elif "1.0-communities.csv" in path:
-            filePath = "./truth_data/v01/EPA/CEJST/1.0-communities.csv"
+            filePath = "/truth_data/v01/EPA/CEJST/1.0-communities.csv"
         if not filePath: 
             return self.original_read_csv(*args, **kwargs)
         return self.original_read_csv(filePath, **kwargs)
