@@ -1,10 +1,7 @@
+import logging
+import os
 from unittest.mock import patch, MagicMock
 import pandas as pd
-import polars as pl
-import logging
-import comstockpostproc
-from unittest.mock import patch
-
 
 class MockCBECS:
 
@@ -28,11 +25,18 @@ class MockCBECS:
     
     def mock__read_csv_action(self, **kwargs):
         logging.info('Mocking read_csv from CBECS')
+
+        #mount point of local truth data
+        mount_point = "/truth_data/v01/EIA/CBECS/"
         path = kwargs["file_path"]
         if "CBECS_2018_microdata.csv" in path:
-            filePath =  "/truth_data/v01/EIA/CBECS/CBECS_2018_microdata.csv"
+            filePath = os.path.join(mount_point, "CBECS_2018_microdata.csv")
         elif "CBECS_2018_microdata_codebook.csv" in path:
-            filePath =  "/truth_data/v01/EIA/CBECS/CBECS_2018_microdata_codebook.csv"
+            filePath = os.path.join(mount_point, "CBECS_2018_microdata_codebook.csv")
+        elif "CBECS_2012_microdata.csv" in path:
+            filePath = os.path.join(mount_point, "CBECS_2012_microdata.csv")
+        elif "CBECS_2012_microdata_codebook.csv" in path:
+            filePath = os.path.join(mount_point, "CBECS_2012_microdata_codebook.csv")
 
         del kwargs["file_path"]
         return pd.read_csv(filePath, **kwargs)
