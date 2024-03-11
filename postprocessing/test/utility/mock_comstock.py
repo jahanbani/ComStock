@@ -4,7 +4,8 @@ import polars as pl
 from unittest.mock import patch
 import logging
 
-
+logging.basicConfig(level='INFO')  # Use DEBUG, INFO, or WARNING
+logger = logging.getLogger(__name__)
 class MockComStock:
     def __init__(self):
         self.patcher = patch('boto3.client')
@@ -33,6 +34,11 @@ class MockComStock:
         self.patcher__read_csv = patch('polars.read_csv')
         self.mock__read_csv = self.patcher__read_csv.start()
         self.mock__read_csv.side_effect = self.mock__read_csv_action
+        
+        self.original_read_parquet = pd.read_parquet
+        self.patcher__read_parquet = patch('pandas.read_parquet')
+        self.mock__read_parquet = self.patcher__read_parquet.start()
+        self.mock__read_parquet.side_effect = self.mock__read_parquet_action
 
     def mock_upload_data_to_S3_action(self, file_path, s3_file_path):
         logging.info('Uploading {}...'.format(file_path))
@@ -56,6 +62,20 @@ class MockComStock:
         if not filePath: 
             return self.original_read_csv(*args, **kwargs)
         return self.original_read_csv(filePath, **kwargs)
+    
+    def mock__read_parquet_action(self, *args, **kwargs):
+        logging.info("read parquet from {}, {}".format(args, kwargs))
+        logging.info('Mocking read_parquet from ComStock')
+        filePath = None
+        path = args[0]
+        if path == "s3://comstock-core/test/com_os340_stds_030_10k_test_1/com_os340_stds_030_10k_test_1/baseline/results_up00.parquet":
+            filePath = "TODO: path to parquet file"
+        if path == "s3://oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2021/resstock_amy2018_release_1/metadata/metadata.parquet":
+            filePath = "TODO: path to parquet file"
+        
+        if not filePath:
+            return self.original_read_parquet(*args, **kwargs)
+        return self.original_read_parquet(filePath, **kwargs)
 
     def stop(self):
         self.patcher.stop()
@@ -63,3 +83,4 @@ class MockComStock:
         self.patcher_upload_data_to_S3.stop()
         self.patcher_read_delimited_truth_data_file_from_S3.stop()
         self.patcher__read_csv.stop()
+        self.patcher__read_parquet.stop()

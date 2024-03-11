@@ -1,3 +1,4 @@
+
 import logging
 import os
 from unittest.mock import patch, MagicMock
@@ -6,7 +7,7 @@ import pandas as pd
 logging.basicConfig(level='INFO')  # Use DEBUG, INFO, or WARNING
 logger = logging.getLogger(__name__)
 
-class MockCBECS:
+class MockEIA:
 
     def __init__(self):
         self.patcher = patch('boto3.client')
@@ -29,7 +30,7 @@ class MockCBECS:
         self.mock__read_parquet.side_effect = self.mock__read_parquet_action
 
     def mock__read_csv_action(self, *args ,**kwargs):
-        logging.info('Mocking read_csv from CBECS')
+        logging.info('Mocking read_csv from EIA')
         path = args[0] 
         filePath = None
         mount_point = "./truth_data/v01/EIA/CBECS/"
@@ -49,7 +50,7 @@ class MockCBECS:
 
     def mock__read_parquet_action(self, *args, **kwargs):
         logging.info("read parquet from {}, {}".format(args, kwargs))
-        logging.info('Mocking read_parquet from CBECS')
+        logging.info('Mocking read_parquet from EIA')
         filePath = None
         path = args[0]
         if not filePath: return self.original_read_parquet(*args, **kwargs)

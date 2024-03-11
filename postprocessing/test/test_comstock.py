@@ -7,6 +7,9 @@ import pytest
 from utility.mock_comstock import MockComStock
 from utility.mock_CBECS import MockCBECS
 import comstockpostproc as cspp
+import logging
+
+logging.getLogger().setLevel(logging.INFO)  # Use DEBUG, INFO, or WARNING
 
 class TestComstock:
 
