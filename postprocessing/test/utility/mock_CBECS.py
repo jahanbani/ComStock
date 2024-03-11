@@ -15,20 +15,17 @@ class MockCBECS:
         self.mock_read_delimited_truth_data_file_from_S3 = self.patcher_read_delimited_truth_data_file_from_S3.start()
         self.mock_read_delimited_truth_data_file_from_S3.side_effect = self.mock_read_delimited_truth_data_file_from_S3_action
 
-        self.patcher__read_csv = patch('comstockpostproc.cbecs.CBECS._read_csv')
+        self.original_read_csv = pd.read_csv
+        self.patcher__read_csv = patch('pandas.read_csv')
         self.mock__read_csv = self.patcher__read_csv.start()
         self.mock__read_csv.side_effect = self.mock__read_csv_action
 
-    def mock_read_delimited_truth_data_file_from_S3_action(self, s3_file_path, delimiter):
-        logging.info('reading from path: {} with delimiter {}'.format(s3_file_path, delimiter))
-        return pd.DataFrame()
-    
-    def mock__read_csv_action(self, **kwargs):
+    def mock__read_csv_action(self, *args ,**kwargs):
         logging.info('Mocking read_csv from CBECS')
-
-        #mount point of local truth data
+        path = args[0] 
+        filePath = None
         mount_point = "/truth_data/v01/EIA/CBECS/"
-        path = kwargs["file_path"]
+
         if "CBECS_2018_microdata.csv" in path:
             filePath = os.path.join(mount_point, "CBECS_2018_microdata.csv")
         elif "CBECS_2018_microdata_codebook.csv" in path:
@@ -38,8 +35,13 @@ class MockCBECS:
         elif "CBECS_2012_microdata_codebook.csv" in path:
             filePath = os.path.join(mount_point, "CBECS_2012_microdata_codebook.csv")
 
-        del kwargs["file_path"]
-        return pd.read_csv(filePath, **kwargs)
+        if filePath is None:
+            return self.original_read_csv(*args, **kwargs)
+        return self.original_read_csv(filePath, **kwargs)
+    
+    def mock_read_delimited_truth_data_file_from_S3_action(self, s3_file_path, delimiter):
+        logging.info('reading from path: {} with delimiter {}'.format(s3_file_path, delimiter))
+        return pd.DataFrame()
 
     def stop(self):
         self.patcher.stop()
