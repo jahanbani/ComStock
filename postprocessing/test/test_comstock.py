@@ -12,7 +12,7 @@ import logging
 logging.getLogger().setLevel(logging.INFO)  # Use DEBUG, INFO, or WARNING
 
 class TestComstock:
-
+    
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self):
         self.mock_cbecs = MockCBECS() 
@@ -22,7 +22,6 @@ class TestComstock:
         self.mock_comstock.stop()
 
     def test__comstock_vs_cbecs_2012(self):
-        #TODO: Comstock's comstock-core/test directory should be download and fetched from local
         comstock = cspp.ComStock(
             s3_base_dir='comstock-core/test',  # If run not on S3, download results_up**.parquet manually
             comstock_run_name='com_os340_stds_030_10k_test_1',  # Name of the run on S3
@@ -38,8 +37,7 @@ class TestComstock:
             reload_from_csv=False, # True if CSV already made and want faster reload times
             include_upgrades=False,  # False if not looking at upgrades
             upgrade_ids_to_skip=[]  # Use ['01', '03'] etc. to exclude certain upgrades
-            )
-
+            )        
         # Scale ComStock to CBECS 2012 AND remove non-ComStock buildings from CBECS
         cbecs = cspp.CBECS(
             cbecs_year=2012,

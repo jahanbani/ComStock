@@ -6,9 +6,7 @@
 import pytest
 import glob
 
-import comstockpostproc.comstock
-import comstockpostproc.cbecs
-import comstockpostproc.comstock_to_cbecs_comparison
+import comstockpostproc as cspp
 import utility.mock_comstock
 import utility.mock_CBECS
 
@@ -24,7 +22,7 @@ class TestComStockToCBECSComparison:
         self.cbecs.stop()
 
     def test_cbecs_plot_generation(self):
-        comstock = comstockpostproc.comstock.ComStock(
+        comstock = cspp.ComStock(
             s3_base_dir='comstock-core/test',  # If run not on S3, download results_up**.parquet manually
             comstock_run_name='com_os340_stds_030_10k_test_1',  # Name of the run on S3
             comstock_run_version='com_os340_stds_030_10k_test_1',  # Use whatever you want to see in plot and folder names
@@ -42,7 +40,7 @@ class TestComStockToCBECSComparison:
             )
 
         # Scale ComStock to CBECS 2012 AND remove non-ComStock buildings from CBECS
-        cbecs = comstockpostproc.cbecs.CBECS(
+        cbecs = cspp.CBECS(
             cbecs_year=2012,
             truth_data_version='v01',
             color_hex='#009E73',
@@ -52,7 +50,7 @@ class TestComStockToCBECSComparison:
         comstock.add_national_scaling_weights(cbecs, remove_non_comstock_bldg_types_from_cbecs=True)
 
         # Compare one or more ComStock runs to one another and to CBECS
-        comparison = comstockpostproc.ComStockToCBECSComparison(
+        comparison = cspp.ComStockToCBECSComparison(
             cbecs_list=[cbecs],
             comstock_list=[comstock],
             make_comparison_plots=True

@@ -30,6 +30,7 @@ class MockCBECS:
 
     def mock__read_csv_action(self, *args ,**kwargs):
         logging.info('Mocking read_csv from CBECS')
+        logging.info('args: {}'.format(args))
         path = args[0] 
         filePath = None
         mount_point = "./truth_data/v01/EIA/CBECS/"
@@ -57,7 +58,7 @@ class MockCBECS:
 
     
     def mock_read_delimited_truth_data_file_from_S3_action(self, s3_file_path, delimiter):
-        logging.info('reading from path: {} with delimiter {}'.format(s3_file_path, delimiter))
+        logging.info('reading from path: {} with delimiter from CBECS {}'.format(s3_file_path, delimiter))
         return pd.DataFrame()
 
     def stop(self):

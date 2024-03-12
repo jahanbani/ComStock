@@ -7,26 +7,28 @@
 import pytest
 import logging
 
-import comstockpostproc.comstock
-import comstockpostproc.ami
-import comstockpostproc.comstock_to_ami_comparison
-import comstockpostproc.cbecs
+import comstockpostproc as cspp
 import utility.mock_comstock
+import utility.mock_CBECS
+import utility.mock_AMI
 
-logging.getLogger.set_level(logging.INFO)
-
+logging.getLogger().setLevel(logging.INFO)
 
 class TestComStockToAMIComparison:
 
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self):
         self.comstock = utility.mock_comstock.MockComStock() 
+        self.cebcs = utility.mock_CBECS.MockCBECS()
+        self.AMI = utility.mock_AMI.MockAMI()
         yield
+        self.cebcs.stop()
         self.comstock.stop()
+        self.AMI.stop()
 
     def test_ami_plot_generation(self):
         # ComStock
-        comstock = comstockpostproc.comstock.ComStock(
+        comstock = cspp.ComStock(
             s3_base_dir='eulp/comstock_core',
             comstock_run_name='ami_comparison',
             comstock_run_version='ami_comparison',
@@ -43,7 +45,7 @@ class TestComStockToAMIComparison:
             )
 
         # CBECS
-        cbecs = comstockpostproc.cbecs.CBECS(
+        cbecs = cspp.CBECS(
             cbecs_year = 2018,
             truth_data_version='v01',
             color_hex='#009E73',
@@ -59,12 +61,12 @@ class TestComStockToAMIComparison:
         comstock.export_to_csv_wide()  # May comment this out after run once
 
         # AMI
-        ami = comstockpostproc.ami.AMI(
+        ami = cspp.AMI(
             truth_data_version='v01',
             reload_from_csv=False
             )
         comstock.download_timeseries_data_for_ami_comparison(ami, reload_from_csv=False, save_individual_regions=False)
 
         # comparison
-        comparison = comstockpostproc.comstock_to_ami_comparison.ComStockToAMIComparison(comstock, ami, make_comparison_plots=True)
+        comparison = cspp.ComStockToAMIComparison(comstock, ami, make_comparison_plots=True)
         comparison.export_plot_data_to_csv_wide()

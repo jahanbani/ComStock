@@ -21,7 +21,7 @@ from comstockpostproc.eia import EIA
 from comstockpostproc.ami import AMI
 from comstockpostproc.gas_correction_model import GasCorrectionModelMixin
 from comstockpostproc.s3_utilities_mixin import S3UtilitiesMixin
-from buildstock_query import BuildStockQuery
+import buildstock_query
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class ComStock(NamingMixin, UnitsMixin, GasCorrectionModelMixin, S3UtilitiesMixi
         self.upgrade_ids_for_comparison = upgrade_ids_for_comparison
         self.s3_client = boto3.client('s3', config=botocore.client.Config(max_pool_connections=50))
         if self.athena_table_name is not None:
-            self.athena_client = BuildStockQuery(workgroup='eulp',
+            self.athena_client = buildstock_query.BuildStockQuery(workgroup='eulp',
                                                  db_name='enduse',
                                                  buildstock_type='comstock',
                                                  table_name=self.athena_table_name,
@@ -727,7 +727,7 @@ class ComStock(NamingMixin, UnitsMixin, GasCorrectionModelMixin, S3UtilitiesMixi
 
         # Show the dataset size
         logger.debug(f'Memory after add_geospatial_columns: {self.data.estimated_size()}')
-    
+
     def add_ejscreen_columns(self):
         # Add the EJ Screen data
         if not 'nhgis_tract_gisjoin' in self.data:
@@ -780,7 +780,7 @@ class ComStock(NamingMixin, UnitsMixin, GasCorrectionModelMixin, S3UtilitiesMixi
 
         # Show the dataset size
         logger.debug(f'Memory after add_ejscreen_columns: {self.data.estimated_size()}')
-    
+
 
     def add_cejst_columns(self):
         # Add the CEJST data

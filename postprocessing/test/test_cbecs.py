@@ -8,6 +8,10 @@ import logging
 from utility.mock_CBECS import MockCBECS
 
 import comstockpostproc as cspp
+
+import logging
+logging.getLogger().setLevel(logging.INFO)  # Use DEBUG, INFO, or WARNING
+
 class TestCBECS:
 
     @pytest.fixture(autouse=True)
