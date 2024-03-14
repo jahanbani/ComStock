@@ -11,12 +11,6 @@ import logging
 logging.getLogger().setLevel(logging.INFO)  # Use DEBUG, INFO, or WARNING
 
 class TestResStock:
-
-    @pytest.fixture(autouse=True)
-    def setup_and_teardown(self):
-        self.mock_resstock = utility.mock_Restock.MockResStock()
-        yield
-        self.mock_resstock.stop()
     
     def test_resstock_unit_count(self):
         resstock = cspp.ResStock(

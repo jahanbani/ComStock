@@ -12,15 +12,6 @@ import comstockpostproc as cspp
 
 class TestGasCorrectionModel:
 
-    @pytest.fixture(autouse=True)
-    def setup_and_teardown(self):
-        self.mock_comstock = MockComStock()
-        self.mock_cebcs = MockCBECS()
-        self.widePath = "../output/ComStock bsb-integration-test-baseline 2018/ComStock wide.csv"
-        yield
-        self.mock_comstock.stop()
-        self.mock_cebcs.stop()
-
     def test_gas_correction_model(self):
         comstock = cspp.ComStock(
             s3_base_dir='comstock-core/test',  # If run not on S3, download results_up**.parquet manually

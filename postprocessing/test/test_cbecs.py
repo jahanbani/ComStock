@@ -14,12 +14,6 @@ logging.getLogger().setLevel(logging.INFO)  # Use DEBUG, INFO, or WARNING
 
 class TestCBECS:
 
-    @pytest.fixture(autouse=True)
-    def setup_and_teardown(self):
-        self.mock_cbecs = MockCBECS() 
-        yield
-        self.mock_cbecs.stop()
-
     def test_cbecs_2012(self, caplog):
         caplog.set_level(logging.INFO)
         cbecs = cspp.CBECS(

@@ -13,14 +13,6 @@ import utility.mock_CBECS
 
 class TestComStockToCBECSComparison:
 
-    @pytest.fixture(autouse=True)
-    def setup_and_teardown(self):
-        self.comstock = utility.mock_comstock.MockComStock()
-        self.cbecs = utility.mock_CBECS.MockCBECS()
-        yield
-        self.comstock.stop()
-        self.cbecs.stop()
-
     def test_cbecs_plot_generation(self):
         comstock = cspp.ComStock(
             s3_base_dir='comstock-core/test',  # If run not on S3, download results_up**.parquet manually

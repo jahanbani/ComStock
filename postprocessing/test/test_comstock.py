@@ -13,14 +13,6 @@ logging.getLogger().setLevel(logging.INFO)  # Use DEBUG, INFO, or WARNING
 
 class TestComstock:
     
-    @pytest.fixture(autouse=True)
-    def setup_and_teardown(self):
-        self.mock_cbecs = MockCBECS() 
-        self.mock_comstock = MockComStock()
-        yield
-        self.mock_cbecs.stop()
-        self.mock_comstock.stop()
-
     def test__comstock_vs_cbecs_2012(self):
         comstock = cspp.ComStock(
             s3_base_dir='comstock-core/test',  # If run not on S3, download results_up**.parquet manually

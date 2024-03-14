@@ -16,16 +16,6 @@ logging.getLogger().setLevel(logging.INFO)
 
 class TestComStockToAMIComparison:
 
-    @pytest.fixture(autouse=True)
-    def setup_and_teardown(self):
-        self.comstock = utility.mock_comstock.MockComStock() 
-        self.cebcs = utility.mock_CBECS.MockCBECS()
-        self.AMI = utility.mock_AMI.MockAMI()
-        yield
-        self.cebcs.stop()
-        self.comstock.stop()
-        self.AMI.stop()
-
     def test_ami_plot_generation(self):
         # ComStock
         comstock = cspp.ComStock(

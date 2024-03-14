@@ -15,16 +15,6 @@ import utility.mock_CBECS
 import utility.mock_EIA
 class TestComStockToEIAComparison:
 
-    @pytest.fixture(autouse=True)
-    def setup_and_teardown(self):
-        self.comstock = utility.mock_comstock.MockComStock() 
-        self.cebcs = utility.mock_CBECS.MockCBECS()
-        self.EIA = utility.mock_EIA.MockEIA()
-        yield
-        self.EIA.stop()
-        self.comstock.stop()
-        self.cebcs.stop()
-
     def test_eia_plot_generation(self):
         # ComStock
         comstock = comstockpostproc.comstock.ComStock(
