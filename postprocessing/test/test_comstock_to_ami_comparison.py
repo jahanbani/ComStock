@@ -8,9 +8,6 @@ import pytest
 import logging
 
 import comstockpostproc as cspp
-import utility.mock_comstock
-import utility.mock_CBECS
-import utility.mock_AMI
 
 logging.getLogger().setLevel(logging.INFO)
 

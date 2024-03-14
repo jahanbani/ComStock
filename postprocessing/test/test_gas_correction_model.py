@@ -6,8 +6,6 @@
 import pytest
 import pandas as pd
 import polars as pl
-from utility.mock_comstock import MockComStock
-from utility.mock_CBECS import MockCBECS
 import comstockpostproc as cspp
 
 class TestGasCorrectionModel:

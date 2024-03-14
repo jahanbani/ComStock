@@ -7,8 +7,6 @@ import pytest
 import glob
 
 import comstockpostproc as cspp
-import utility.mock_comstock
-import utility.mock_CBECS
 
 
 class TestComStockToCBECSComparison:

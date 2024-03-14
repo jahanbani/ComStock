@@ -4,8 +4,6 @@
 # -*- coding: utf-8 -*-
 
 import pytest
-from utility.mock_comstock import MockComStock
-from utility.mock_CBECS import MockCBECS
 import comstockpostproc as cspp
 import logging
 

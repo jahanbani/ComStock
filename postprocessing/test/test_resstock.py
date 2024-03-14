@@ -5,7 +5,6 @@
 
 import pytest
 
-import utility.mock_Restock
 import comstockpostproc as cspp
 import logging
 logging.getLogger().setLevel(logging.INFO)  # Use DEBUG, INFO, or WARNING

@@ -10,9 +10,6 @@ import comstockpostproc.comstock
 import comstockpostproc.eia
 import comstockpostproc.comstock_to_eia_comparison
 import comstockpostproc.cbecs
-import utility.mock_comstock
-import utility.mock_CBECS
-import utility.mock_EIA
 class TestComStockToEIAComparison:
 
     def test_eia_plot_generation(self):
