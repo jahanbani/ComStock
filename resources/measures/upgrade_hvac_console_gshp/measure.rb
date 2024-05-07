@@ -395,13 +395,23 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
       # new_heating_coil.setHeatingPowerConsumptionCoefficient4(-0.177653510577989)
       # new_heating_coil.setHeatingPowerConsumptionCoefficient5(-0.103079864171839)
       condenser_loop.addDemandBranchForComponent(new_heating_coil)
-
+      
+	  #get information from existing supply fans
+	  thermal_zone.equipment.each do |equip|
+		if equip.to_FanOnOff.is_initialized
+		   sup_fan = equip.to_FanOnOff.get
+		   pressure_rise = sup_fan.pressureRise()
+		   runner.registerInfo("fan pressure drop #{pressure_rise}")
+		end
+	  end
       #add supply fan
-      fan = OpenStudio::Model::FanConstantVolume.new(model)
+      fan = OpenStudio::Model::FanOnOff.new(model)
       fan.setName("#{thermal_zone.name} Fan")
       fan.setFanEfficiency(0.63) # from PNNL
       fan.setPressureRise(50.0) #Pascal
       fan.setMotorEfficiency(0.29)
+	  
+
 
       # Create a new water-to-air ground source heat pump system
       unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
