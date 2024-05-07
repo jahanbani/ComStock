@@ -405,7 +405,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 		end
 	  end
       #add supply fan
-      fan = OpenStudio::Model::FanOnOff.new(model)
+      fan = OpenStudio::Model::FanConstantVolume.new(model)
       fan.setName("#{thermal_zone.name} Fan")
       fan.setFanEfficiency(0.63) # from PNNL
       fan.setPressureRise(50.0) #Pascal
