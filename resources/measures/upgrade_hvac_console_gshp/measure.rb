@@ -46,6 +46,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
     std = Standard.build(template)
     # get climate zone value
     climate_zone = std.model_standards_climate_zone(model)
+	standard_new_motor = Standard.build('90.1-2019') #to reflect new motors
 
     # determine if the air loop is residential (checks to see if there is outdoor air system object)
     # measure will be applicable to residential AC/residential furnace systems
@@ -422,21 +423,25 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 		   ptac_unit = equip.to_ZoneHVACPackagedTerminalAirConditioner.get
 		   runner.registerInfo("ptac #{ptac_unit}")
 		      sup_fan=ptac_unit.supplyAirFan
-			  if sup_fan.to_FanOnOff.is_initialized
-				  sup_fan = sup_fan.to_FanOnOff.get
-				  runner.registerInfo("sf #{sup_fan}")
-				  pressure_rise = sup_fan.pressureRise#() #need to get right method for this 
-				  runner.registerInfo("fan pressure drop #{pressure_rise}")
+			  #if sup_fan.to_FanOnOff.is_initialized
+				  #sup_fan = sup_fan.to_FanOnOff.get
+				  #runner.registerInfo("sf #{sup_fan}")
+				  #pressure_rise = sup_fan.pressureRise#() #need to get right method for this 
 				  #add supply fan
 				  fan = OpenStudio::Model::FanConstantVolume.new(model)
+				  #motor_hp = std.fan_motor_horsepower(sup_fan) #based on existing fan, might need to take a different approach for small fans 
+				  #fan_motor_eff = standard_new_motor.fan_standard_minimum_motor_efficiency_and_size(sup_fan, motor_hp)[0]
+				  fan_motor_eff = 0.29 #to be updated pending approach for small fans, but generally the case per ComStock docs 
+				  fan_eff = 0.55 # per comstock docs 
+				  #fan_eff = std.fan_baseline_impeller_efficiency(sup_fan)
 				  fan.setName("#{thermal_zone.name} Fan")
-				  fan.setFanEfficiency(0.63) # from PNNL
+				  fan.setMotorEfficiency(fan_motor_eff)
+				  fan.setFanEfficiency(fan_eff) 
+				  fan.setFanTotalEfficiency(fan_motor_eff * fan_eff)
 				  runner.registerInfo("thermal zone name from hash #{zone_fan_pressure_data[thermal_zone.name]}")
 				  fan.setPressureRise(zone_fan_pressure_data[thermal_zone.name.to_s]) 
-				  fan.setPressureRise(50.0) #Pascal
-				  fan.setMotorEfficiency(0.29)
 				  unitary_system.setSupplyFan(fan)
-			  end 
+			  #end 
 		end
 	  end
      
