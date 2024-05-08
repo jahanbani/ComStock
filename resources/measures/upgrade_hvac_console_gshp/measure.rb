@@ -204,7 +204,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
     end
 
     # delete equipment from original loop
-    equip_to_delete.each(&:remove)
+    #equip_to_delete.each(&:remove) ##AA commented this out for now 
 
     # get plant loops and remove
     # only relevant for direct evap coolers with baseboard gas boiler
@@ -326,6 +326,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
       air_loop_hvac.remove
     end
 
+
     # Loop through each thermal zone and remove old PTAC/PTHP and replace it with a water-to-air ground source heat pump
     model.getThermalZones.each do |thermal_zone|
 
@@ -395,23 +396,31 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
       # new_heating_coil.setHeatingPowerConsumptionCoefficient4(-0.177653510577989)
       # new_heating_coil.setHeatingPowerConsumptionCoefficient5(-0.103079864171839)
       condenser_loop.addDemandBranchForComponent(new_heating_coil)
-      
-	  #get information from existing supply fans
-	  thermal_zone.equipment.each do |equip|
-		if equip.to_FanOnOff.is_initialized
-		   sup_fan = equip.to_FanOnOff.get
-		   pressure_rise = sup_fan.pressureRise()
-		   runner.registerInfo("fan pressure drop #{pressure_rise}")
+     
+	 
+	 thermal_zone.equipment.each do |equip|
+		 runner.registerInfo("in equip loop")
+		 runner.registerInfo("equip #{equip}")
+		if equip.to_ZoneHVACPackagedTerminalAirConditioner.is_initialized
+		   ptac_unit = equip.to_ZoneHVACPackagedTerminalAirConditioner.get
+		   runner.registerInfo("ptac #{ptac_unit}")
+		   #if ptac_unit.supplyAirFan.is_initialized
+		      sup_fan=ptac_unit.supplyAirFan
+			  runner.registerInfo("sf #{sup_fan}")
+			  pressure_rise = sup_fan.pressureRise#() #need to get right method for this 
+			  runner.registerInfo("fan pressure drop #{pressure_rise}")
+			#end 
+		   #equip.to_ZoneHVACPackagedTerminalAirConditioner.is_initialized
+           #ptacs << equip.to_ZoneHVACPackagedTerminalAirConditioner.get
 		end
 	  end
+	  
       #add supply fan
       fan = OpenStudio::Model::FanConstantVolume.new(model)
       fan.setName("#{thermal_zone.name} Fan")
       fan.setFanEfficiency(0.63) # from PNNL
       fan.setPressureRise(50.0) #Pascal
       fan.setMotorEfficiency(0.29)
-	  
-
 
       # Create a new water-to-air ground source heat pump system
       unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
