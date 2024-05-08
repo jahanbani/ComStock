@@ -120,6 +120,8 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
       runner.registerAsNotApplicable("Entire building is made up of non-applicable space types. Measure is not applicable.")
       return true
     end
+	
+	zone_fan_pressure_data=Hash.new 
 
     if all_air_loops.empty?
       runner.registerInfo("Model does not have any air loops. Get list of PTAC, PTHP, Unit Heater, or Baseboard Electric equipment to delete.")
@@ -130,6 +132,17 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
           next unless equip.to_ZoneHVACPackagedTerminalAirConditioner.is_initialized
           ptacs << equip.to_ZoneHVACPackagedTerminalAirConditioner.get
           equip_to_delete << equip.to_ZoneHVACPackagedTerminalAirConditioner.get
+		  ptac_unit = equip.to_ZoneHVACPackagedTerminalAirConditioner.get
+		   runner.registerInfo("ptac #{ptac_unit}")
+		   sup_fan=ptac_unit.supplyAirFan
+		   if sup_fan.to_FanOnOff.is_initialized
+				  sup_fan = sup_fan.to_FanOnOff.get
+				  runner.registerInfo("sf #{sup_fan}")
+				  pressure_rise = sup_fan.pressureRise#() #need to get right method for this 
+				  runner.registerInfo("fan pressure drop #{pressure_rise}")
+				  zone_fan_pressure_data[thermal_zone.name.to_s] = pressure_rise
+				  runner.registerInfo("data from hash#{zone_fan_pressure_data[thermal_zone.name.to_s]}")
+		  end 
         end
       end
 
@@ -203,8 +216,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
       end
     end
 
-    # delete equipment from original loop
-    #equip_to_delete.each(&:remove) ##AA commented this out for now 
+
 
     # get plant loops and remove
     # only relevant for direct evap coolers with baseboard gas boiler
@@ -396,31 +408,6 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
       # new_heating_coil.setHeatingPowerConsumptionCoefficient4(-0.177653510577989)
       # new_heating_coil.setHeatingPowerConsumptionCoefficient5(-0.103079864171839)
       condenser_loop.addDemandBranchForComponent(new_heating_coil)
-     
-	 
-	 thermal_zone.equipment.each do |equip|
-		 runner.registerInfo("in equip loop")
-		 runner.registerInfo("equip #{equip}")
-		if equip.to_ZoneHVACPackagedTerminalAirConditioner.is_initialized
-		   ptac_unit = equip.to_ZoneHVACPackagedTerminalAirConditioner.get
-		   runner.registerInfo("ptac #{ptac_unit}")
-		   #if ptac_unit.supplyAirFan.is_initialized
-		      sup_fan=ptac_unit.supplyAirFan
-			  runner.registerInfo("sf #{sup_fan}")
-			  pressure_rise = sup_fan.pressureRise#() #need to get right method for this 
-			  runner.registerInfo("fan pressure drop #{pressure_rise}")
-			#end 
-		   #equip.to_ZoneHVACPackagedTerminalAirConditioner.is_initialized
-           #ptacs << equip.to_ZoneHVACPackagedTerminalAirConditioner.get
-		end
-	  end
-	  
-      #add supply fan
-      fan = OpenStudio::Model::FanConstantVolume.new(model)
-      fan.setName("#{thermal_zone.name} Fan")
-      fan.setFanEfficiency(0.63) # from PNNL
-      fan.setPressureRise(50.0) #Pascal
-      fan.setMotorEfficiency(0.29)
 
       # Create a new water-to-air ground source heat pump system
       unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
@@ -428,7 +415,31 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
       unitary_system.setCoolingCoil(new_cooling_coil)
       unitary_system.setHeatingCoil(new_heating_coil)
       unitary_system.setControllingZoneorThermostatLocation(thermal_zone)
-      unitary_system.setSupplyFan(fan)
+	  thermal_zone.equipment.each do |equip|
+		 runner.registerInfo("in equip loop")
+		 runner.registerInfo("equip #{equip}")
+		if equip.to_ZoneHVACPackagedTerminalAirConditioner.is_initialized
+		   ptac_unit = equip.to_ZoneHVACPackagedTerminalAirConditioner.get
+		   runner.registerInfo("ptac #{ptac_unit}")
+		      sup_fan=ptac_unit.supplyAirFan
+			  if sup_fan.to_FanOnOff.is_initialized
+				  sup_fan = sup_fan.to_FanOnOff.get
+				  runner.registerInfo("sf #{sup_fan}")
+				  pressure_rise = sup_fan.pressureRise#() #need to get right method for this 
+				  runner.registerInfo("fan pressure drop #{pressure_rise}")
+				  #add supply fan
+				  fan = OpenStudio::Model::FanConstantVolume.new(model)
+				  fan.setName("#{thermal_zone.name} Fan")
+				  fan.setFanEfficiency(0.63) # from PNNL
+				  runner.registerInfo("thermal zone name from hash #{zone_fan_pressure_data[thermal_zone.name]}")
+				  fan.setPressureRise(zone_fan_pressure_data[thermal_zone.name.to_s]) 
+				  fan.setPressureRise(50.0) #Pascal
+				  fan.setMotorEfficiency(0.29)
+				  unitary_system.setSupplyFan(fan)
+			  end 
+		end
+	  end
+     
       unitary_system.setFanPlacement('DrawThrough')
       if model.version < OpenStudio::VersionString.new('3.7.0')
         unitary_system.setSupplyAirFlowRateMethodDuringCoolingOperation('SupplyAirFlowRate')
@@ -508,6 +519,9 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
       preheat_sm_location = preheat_coil.outletModelObject.get.to_Node.get
       preheat_coil_setpoint_manager.addToNode(preheat_sm_location)
     end
+	
+	 # delete equipment from original loop
+       equip_to_delete.each(&:remove) ##AA moved to preserve the previous fan attributes to get pressure drop 
 
     # for zones that got skipped, check if there are already baseboards. if not, add them. 
     model.getThermalZones.each do |thermal_zone|
