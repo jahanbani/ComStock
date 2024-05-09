@@ -106,6 +106,17 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
     unconditioned_zones = []
     zones_to_skip = []
     all_air_loops = model.getAirLoopHVACs
+	
+   ##AA added--apply sizing run to get fan autosizing. confirm if this is necessary for comstock. 	
+   if model.sqlFile.empty?
+	 #runner.registerInfo('Model had no sizing values--running size run')
+	 if std.model_run_sizing_run(model, "#{Dir.pwd}/advanced_rtu_control") == false
+		 runner.registerError('Sizing run for Hardsize model failed, cannot hard-size model.')
+		 return false
+     end
+	 model.applySizingValues
+  end
+
 
     # if a thermal zone started out with no equipment (aka it is unconditioned), skip this zone
     model.getThermalZones.each do |thermal_zone|
@@ -424,16 +435,15 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 		   runner.registerInfo("ptac #{ptac_unit}")
 		      sup_fan=ptac_unit.supplyAirFan
 			  #if sup_fan.to_FanOnOff.is_initialized
-				  #sup_fan = sup_fan.to_FanOnOff.get
-				  #runner.registerInfo("sf #{sup_fan}")
-				  #pressure_rise = sup_fan.pressureRise#() #need to get right method for this 
+				  sup_fan = sup_fan.to_FanOnOff.get
+				  runner.registerInfo("sf #{sup_fan}")
 				  #add supply fan
 				  fan = OpenStudio::Model::FanConstantVolume.new(model)
-				  #motor_hp = std.fan_motor_horsepower(sup_fan) #based on existing fan, might need to take a different approach for small fans 
-				  #fan_motor_eff = standard_new_motor.fan_standard_minimum_motor_efficiency_and_size(sup_fan, motor_hp)[0]
-				  fan_motor_eff = 0.29 #to be updated pending approach for small fans, but generally the case per ComStock docs 
-				  fan_eff = 0.55 # per comstock docs 
-				  #fan_eff = std.fan_baseline_impeller_efficiency(sup_fan)
+				  motor_hp = std.fan_brake_horsepower(sup_fan) #based on existing fan, might need to take a different approach for small fans 
+				  fan_motor_eff = standard_new_motor.fan_standard_minimum_motor_efficiency_and_size(sup_fan, motor_hp)[0]
+				 # fan_motor_eff = 0.29 #to be updated pending approach for small fans, but generally the case per ComStock docs 
+				  #fan_eff = 0.55 # per comstock docs 
+				  fan_eff = std.fan_baseline_impeller_efficiency(sup_fan)
 				  fan.setName("#{thermal_zone.name} Fan")
 				  fan.setMotorEfficiency(fan_motor_eff)
 				  fan.setFanEfficiency(fan_eff) 
