@@ -150,7 +150,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 		   if sup_fan.to_FanOnOff.is_initialized
 				  sup_fan = sup_fan.to_FanOnOff.get
 				  runner.registerInfo("sf #{sup_fan}")
-				  pressure_rise = sup_fan.pressureRise#() #need to get right method for this 
+				  pressure_rise = sup_fan.pressureRise
 				  runner.registerInfo("fan pressure drop #{pressure_rise}")
 				  zone_fan_pressure_data[thermal_zone.name.to_s] = pressure_rise
 				  runner.registerInfo("data from hash#{zone_fan_pressure_data[thermal_zone.name.to_s]}")
@@ -441,14 +441,12 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 				  fan = OpenStudio::Model::FanConstantVolume.new(model)
 				  motor_hp = std.fan_brake_horsepower(sup_fan) #based on existing fan, might need to take a different approach for small fans 
 				  fan_motor_eff = standard_new_motor.fan_standard_minimum_motor_efficiency_and_size(sup_fan, motor_hp)[0]
-				 # fan_motor_eff = 0.29 #to be updated pending approach for small fans, but generally the case per ComStock docs 
-				  #fan_eff = 0.55 # per comstock docs 
 				  fan_eff = std.fan_baseline_impeller_efficiency(sup_fan)
 				  fan.setName("#{thermal_zone.name} Fan")
-				  fan.setMotorEfficiency(fan_motor_eff)
+				  fan.setMotorEfficiency(fan_motor_eff) #Setting assuming similar size to previous fan, but new and subject to current standards 
 				  fan.setFanEfficiency(fan_eff) 
 				  fan.setFanTotalEfficiency(fan_motor_eff * fan_eff)
-				  runner.registerInfo("thermal zone name from hash #{zone_fan_pressure_data[thermal_zone.name]}")
+				  #Set pressure rise based on previous fan, assuming similar pressure drops to before 
 				  fan.setPressureRise(zone_fan_pressure_data[thermal_zone.name.to_s]) 
 				  unitary_system.setSupplyFan(fan)
 			  #end 

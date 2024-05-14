@@ -3,8 +3,8 @@
   <schema_version>3.1</schema_version>
   <name>add_console_gshp</name>
   <uid>e7cff13c-fffa-4c6c-9494-938e27f7f335</uid>
-  <version_id>d271d70a-4400-49db-98a5-09875d473d43</version_id>
-  <version_modified>2024-05-07T22:55:55Z</version_modified>
+  <version_id>6875b46a-748e-4147-a7e9-54a43b6b27ff</version_id>
+  <version_modified>2024-05-14T23:14:17Z</version_modified>
   <xml_checksum>5E2576E4</xml_checksum>
   <class_name>AddConsoleGSHP</class_name>
   <display_name>add_console_gshp</display_name>
@@ -71,7 +71,7 @@
       <filename>measure.rb</filename>
       <filetype>rb</filetype>
       <usage_type>script</usage_type>
-      <checksum>DA90E8BC</checksum>
+      <checksum>4320B8B6</checksum>
     </file>
     <file>
       <filename>Ground Loop Heat Pump Performance Data.xlsx</filename>
