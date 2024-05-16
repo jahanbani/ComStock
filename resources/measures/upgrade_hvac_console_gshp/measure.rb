@@ -676,10 +676,10 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 		  if zone_fan_data.empty? #case where no fan present previously, need to set efficiencies based on sizing; autosize pressure rise 
 			  motor_hp = std.fan_brake_horsepower(fan) 
 			  fan_motor_eff = standard_new_motor.fan_standard_minimum_motor_efficiency_and_size(fan, motor_hp)[0]
-			  fan.setMotorEfficiency = fan_motor_eff
+			  fan.setMotorEfficiency(fan_motor_eff)
 			  fan_eff = std.fan_baseline_impeller_efficiency(fan)
-			  fan.setFanEfficiency = fan_eff
-			  fan.setFanTotalEfficiency = fan_eff * fan_motor_eff
+			  fan.setFanEfficiency(fan_eff)
+			  fan.setFanTotalEfficiency(fan_eff * fan_motor_eff)
 		  end 
           else
             runner.registerError("Unable to retrieve maximum air flow for fan (#{fan.name})")
