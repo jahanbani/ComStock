@@ -456,8 +456,10 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 		  fan = OpenStudio::Model::FanConstantVolume.new(model)
 		  fan.setName("#{thermal_zone.name} Fan")
 		  fan.setMotorEfficiency(zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff']) #Setting assuming similar size to previous fan, but new and subject to current standards 
-		  fan.setFanEfficiency(zone_fan_data[thermal_zone.name.to_s + 'fan_eff']) 
-		  fan.setFanTotalEfficiency(zone_fan_data[thermal_zone.name.to_s + 'fan_eff']*zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'])
+		  #fan.setFanEfficiency(zone_fan_data[thermal_zone.name.to_s + 'fan_eff']) 
+		  fan_eff = 0.55 #since console unit fans would be considered small, set efficiency based on small fan 
+		  fan.setFanEfficiency(fan_eff)
+		  fan.setFanTotalEfficiency(fan_eff*zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'])
 		  #Set pressure rise based on previous fan, assuming similar pressure drops to before 
 		  fan.setPressureRise(zone_fan_data[thermal_zone.name.to_s + 'pressure_rise']) 
 	  else #case where there was not a fan present previously 
@@ -680,6 +682,8 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 			  fan_motor_eff = 0.29 #based on "small motor" status 
 			  fan.setMotorEfficiency(fan_motor_eff)
 			  #fan_eff = std.fan_baseline_impeller_efficiency(fan)
+			  #Evaluate if small fan or not, and set efficiency appropriately 
+			  
 			  fan_eff = 0.55 #based on "small fan" status 
 			  fan.setFanEfficiency(fan_eff)
 			  fan.setFanTotalEfficiency(fan_eff * fan_motor_eff)
