@@ -674,16 +674,18 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
           # air flow
           if fan.maximumFlowRate.is_initialized
             fan_air_flow = fan.maximumFlowRate.get
-		  if zone_fan_data.empty? #case where no fan present previously, need to set efficiencies based on sizing; autosize pressure rise 
-			  motor_hp = std.fan_motor_horsepower(fan) 
-			  motor_bhp = std.fan_brake_horsepower(fan)
-			  fan_motor_eff = standard_new_motor.fan_standard_minimum_motor_efficiency_and_size(fan, motor_bhp)[0]
+		  if zone_fan_data.empty? #case where no fan present previously, need to set efficiencies based on sizing
+			  # motor_hp = std.fan_motor_horsepower(fan) 
+			  # motor_bhp = std.fan_brake_horsepower(fan)
+			  fan_motor_eff = 0.29 #based on "small motor" status 
 			  fan.setMotorEfficiency(fan_motor_eff)
-			  fan_eff = std.fan_baseline_impeller_efficiency(fan)
+			  #fan_eff = std.fan_baseline_impeller_efficiency(fan)
+			  fan_eff = 0.55 #based on "small fan" status 
 			  fan.setFanEfficiency(fan_eff)
 			  fan.setFanTotalEfficiency(fan_eff * fan_motor_eff)
 			  #Set pressure rise based on assumption in OS standards for PTACs, a similar unit style 
 			  fan.setPressureRise(330.96) #setting to same value as PTACs in prototype, in PA 
+
 		  end 
           else
             runner.registerError("Unable to retrieve maximum air flow for fan (#{fan.name})")
