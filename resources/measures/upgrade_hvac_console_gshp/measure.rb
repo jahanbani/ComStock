@@ -682,6 +682,8 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 			  fan_eff = std.fan_baseline_impeller_efficiency(fan)
 			  fan.setFanEfficiency(fan_eff)
 			  fan.setFanTotalEfficiency(fan_eff * fan_motor_eff)
+			  #Set pressure rise based on assumption in OS standards for PTACs, a similar unit style 
+			  fan.setPressureRise(330.96) #setting to same value as PTACs in prototype, in PA 
 		  end 
           else
             runner.registerError("Unable to retrieve maximum air flow for fan (#{fan.name})")
