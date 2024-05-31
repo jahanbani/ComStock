@@ -153,8 +153,8 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 				  pressure_rise = sup_fan.pressureRise
 				  #runner.registerInfo("fan pressure drop #{pressure_rise}")
 				  zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'] = pressure_rise
-				  motor_hp = std.fan_brake_horsepower(sup_fan) #based on existing fan, might need to take a different approach for small fans 
-				  fan_motor_eff = standard_new_motor.fan_standard_minimum_motor_efficiency_and_size(sup_fan, motor_hp)[0]
+				  motor_hp = std.fan_motor_horsepower(sup_fan) #based on existing fan, might need to take a different approach for small fans 
+				  fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(sup_fan, motor_hp)[0] ##AA updated from standard new motor 
 				  zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'] = fan_motor_eff
 				  fan_eff = std.fan_baseline_impeller_efficiency(sup_fan)
 				  zone_fan_data[thermal_zone.name.to_s + 'fan_eff'] = fan_eff
@@ -177,7 +177,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 			  pressure_rise = sup_fan.pressureRise
 			  #runner.registerInfo("fan pressure drop #{pressure_rise}")
 			  zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'] = pressure_rise
-			  motor_hp = std.fan_brake_horsepower(sup_fan) #based on existing fan, might need to take a different approach for small fans 
+			  motor_hp = std.fan_motor_horsepower(sup_fan) #based on existing fan, might need to take a different approach for small fans 
 			  fan_motor_eff = standard_new_motor.fan_standard_minimum_motor_efficiency_and_size(sup_fan, motor_hp)[0]
 			  zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'] = fan_motor_eff
 			  fan_eff = std.fan_baseline_impeller_efficiency(sup_fan)
@@ -674,7 +674,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
           if fan.maximumFlowRate.is_initialized
             fan_air_flow = fan.maximumFlowRate.get
 		  if zone_fan_data.empty? #case where no fan present previously, need to set efficiencies based on sizing; autosize pressure rise 
-			  motor_hp = std.fan_brake_horsepower(fan) 
+			  motor_hp = std.fan_motor_horsepower(fan) 
 			  fan_motor_eff = standard_new_motor.fan_standard_minimum_motor_efficiency_and_size(fan, motor_hp)[0]
 			  fan.setMotorEfficiency(fan_motor_eff)
 			  fan_eff = std.fan_baseline_impeller_efficiency(fan)
