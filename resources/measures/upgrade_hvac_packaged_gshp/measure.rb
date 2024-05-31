@@ -197,6 +197,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     psz_air_loops = []
     pvav_air_loops = []
     applicable_area_m2 = 0
+	zone_sched_data=Hash.new  #to hold schedule data 
     all_air_loops.each do |air_loop_hvac|
       # skip units that are not single zone
       if air_loop_hvac.thermalZones.length == 1
@@ -415,6 +416,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
           dehumid_type = unitary_sys.dehumidificationControlType
           # get supply fan operation schedule
           supply_fan_op_sched = unitary_sys.supplyAirFanOperatingModeSchedule.get
+		  zone_sched_data[thermal_zone.name.to_s]=supply_fan_op_sched
           # get supply fan availability schedule
           supply_fan = unitary_sys.supplyFan.get
           # convert supply fan to appropriate object to access methods
@@ -473,16 +475,26 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
             runner.registerError("Supply fan type for #{air_loop_hvac.name} not supported.")
             return false
           end
-          # get the availability schedule
-          supply_fan_avail_sched = supply_fan.availabilitySchedule
-          if supply_fan_avail_sched.to_ScheduleConstant.is_initialized
-            supply_fan_avail_sched = supply_fan_avail_sched.to_ScheduleConstant.get
-          elsif supply_fan_avail_sched.to_ScheduleRuleset.is_initialized
-            supply_fan_avail_sched = supply_fan_avail_sched.to_ScheduleConstant.get
-          else
-            runner.registerError("Supply fan availability schedule type for #{supply_fan.name} not supported.")
-            return false
-          end
+		  ##AA may need to remove the chunk below 
+		  air_loop_avail_sched = air_loop_hvac.availabilitySchedule 
+		  #Populate zones with schedules 
+		  zones=air_loop_hvac.thermalZones
+		  runner.registerInfo("zones object #{zones}")
+		  for zone in zones
+		      zone_sched_data[zone.name.to_s]=air_loop_avail_sched
+			  runner.registerInfo("populating schedules") 
+		  end 
+		  
+          # get the availability schedule; AA commented out the below 
+          # supply_fan_avail_sched = supply_fan.availabilitySchedule
+          # if supply_fan_avail_sched.to_ScheduleConstant.is_initialized
+            # supply_fan_avail_sched = supply_fan_avail_sched.to_ScheduleConstant.get
+          # elsif supply_fan_avail_sched.to_ScheduleRuleset.is_initialized
+            # supply_fan_avail_sched = supply_fan_avail_sched.to_ScheduleConstant.get
+          # else
+            # runner.registerError("Supply fan availability schedule type for #{supply_fan.name} not supported.")
+            # return false
+          # end
           # get supply fan motor efficiency
           fan_tot_eff = supply_fan.fanTotalEfficiency
           # get supply motor efficiency
@@ -518,7 +530,14 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 
     # remove old PVAV air loops; this must be done after removing zone equipment or it will cause segmentation fault
     pvav_air_loops.each do |pvav_air_loop|
-      pvav_air_loop.remove
+	  zones=pvav_air_loop.thermalZones
+	  runner.registerInfo("zones object #{zones}")
+	  air_loop_avail_sched = pvav_air_loop.availabilitySchedule 
+	  for zone in zones
+		  zone_sched_data[zone.name.to_s]=air_loop_avail_sched
+		  runner.registerInfo("populating schedules") 
+	  end 
+	  pvav_air_loop.remove
     end
 
     #also remove any EMS objects tied to PVAV air loops that are being removed
@@ -618,7 +637,13 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       unitary_system.setControllingZoneorThermostatLocation(thermal_zone)
       unitary_system.setSupplyFan(fan)
       unitary_system.setFanPlacement(fan_location)
-      unitary_system.setSupplyAirFanOperatingModeSchedule(supply_fan_op_sched) ##AA updated 
+	  runner.registerInfo("schedule")
+	  runner.registerInfo("#{zone_sched_data[thermal_zone.name.to_s]}") 
+	  if  zone_sched_data.has_key?(thermal_zone.name.to_s) 
+      unitary_system.setSupplyAirFanOperatingModeSchedule(zone_sched_data[thermal_zone.name.to_s]) ##AA updated 
+	  else
+	  runner.registerInfo("schedule not found") 
+	  end 
       unitary_system.setMaximumOutdoorDryBulbTemperatureforSupplementalHeaterOperation(OpenStudio.convert(40.0, 'F',
                                                                                                           'C').get)
       unitary_system.setName("#{air_loop_hvac.name} Unitary HP")
