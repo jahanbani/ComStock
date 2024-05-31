@@ -475,26 +475,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
             runner.registerError("Supply fan type for #{air_loop_hvac.name} not supported.")
             return false
           end
-		  ##AA may need to remove the chunk below 
-		  air_loop_avail_sched = air_loop_hvac.availabilitySchedule 
-		  #Populate zones with schedules 
-		  zones=air_loop_hvac.thermalZones
-		  runner.registerInfo("zones object #{zones}")
-		  for zone in zones
-		      zone_sched_data[zone.name.to_s]=air_loop_avail_sched
-			  runner.registerInfo("populating schedules") 
-		  end 
 		  
-          # get the availability schedule; AA commented out the below 
-          # supply_fan_avail_sched = supply_fan.availabilitySchedule
-          # if supply_fan_avail_sched.to_ScheduleConstant.is_initialized
-            # supply_fan_avail_sched = supply_fan_avail_sched.to_ScheduleConstant.get
-          # elsif supply_fan_avail_sched.to_ScheduleRuleset.is_initialized
-            # supply_fan_avail_sched = supply_fan_avail_sched.to_ScheduleConstant.get
-          # else
-            # runner.registerError("Supply fan availability schedule type for #{supply_fan.name} not supported.")
-            # return false
-          # end
           # get supply fan motor efficiency
           fan_tot_eff = supply_fan.fanTotalEfficiency
           # get supply motor efficiency
