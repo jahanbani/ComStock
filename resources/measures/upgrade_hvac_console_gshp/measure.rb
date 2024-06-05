@@ -179,7 +179,6 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 			  zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'] = pressure_rise
 			  motor_hp = std.fan_motor_horsepower(sup_fan) #based on existing fan, might need to take a different approach for small fans 
 			  motor_bhp = std.fan_brake_horsepower(sup_fan)
-			  runner.registerInfo("motor bhp #{motor_bhp}")
 			  fan_motor_eff = standard_new_motor.fan_standard_minimum_motor_efficiency_and_size(sup_fan, motor_bhp)[0]
 			  zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'] = fan_motor_eff
 			  fan_eff = std.fan_baseline_impeller_efficiency(sup_fan)
