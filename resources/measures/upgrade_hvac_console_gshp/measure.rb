@@ -179,6 +179,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 			  zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'] = pressure_rise
 			  motor_hp = std.fan_motor_horsepower(sup_fan) #based on existing fan, might need to take a different approach for small fans 
 			  motor_bhp = std.fan_brake_horsepower(sup_fan)
+			  runner.registerInfo("motor bhp #{motor_bhp}")
 			  fan_motor_eff = standard_new_motor.fan_standard_minimum_motor_efficiency_and_size(sup_fan, motor_bhp)[0]
 			  zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'] = fan_motor_eff
 			  fan_eff = std.fan_baseline_impeller_efficiency(sup_fan)
@@ -456,7 +457,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 		  fan = OpenStudio::Model::FanConstantVolume.new(model)
 		  fan.setName("#{thermal_zone.name} Fan")
 		  fan.setMotorEfficiency(zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff']) #Setting assuming similar size to previous fan, but new and subject to current standards 
-		  #fan.setFanEfficiency(zone_fan_data[thermal_zone.name.to_s + 'fan_eff']) 
+		  #fan_eff = fan.setFanEfficiency(zone_fan_data[thermal_zone.name.to_s + 'fan_eff']) 
 		  fan_eff = 0.55 #since console unit fans would be considered small, set efficiency based on small fan 
 		  fan.setFanEfficiency(fan_eff)
 		  fan.setFanTotalEfficiency(fan_eff*zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'])
@@ -679,13 +680,15 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 		  if zone_fan_data.empty? #case where no fan present previously, need to set efficiencies based on sizing
 			  # motor_hp = std.fan_motor_horsepower(fan) 
 			  # motor_bhp = std.fan_brake_horsepower(fan)
-			  fan_motor_eff = 0.29 #based on "small motor" status 
-			  fan.setMotorEfficiency(fan_motor_eff)
+			  motor_hp = std.fan_motor_horsepower(fan) #based on existing fan, might need to take a different approach for small fans
+              motor_bhp = std.fan_brake_horsepower(fan)			  
+			  fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(fan, motor_bhp)[0] ##AA updated from standard new motor 
 			  #fan_eff = std.fan_baseline_impeller_efficiency(fan)
-			  #Evaluate if small fan or not, and set efficiency appropriately 
-			  
+			  #fan_motor_eff = 0.29 #based on "small motor" status 
+			  fan.setMotorEfficiency(fan_motor_eff)
 			  fan_eff = 0.55 #based on "small fan" status 
 			  fan.setFanEfficiency(fan_eff)
+			  runner.registerInfo("fan: motor_hp #{motor_hp}, fan_eff:  #{fan_eff}")
 			  fan.setFanTotalEfficiency(fan_eff * fan_motor_eff)
 			  #Set pressure rise based on assumption in OS standards for PTACs, a similar unit style 
 			  fan.setPressureRise(330.96) #setting to same value as PTACs in prototype, in PA 
