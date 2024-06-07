@@ -469,6 +469,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       else
         # loop through components
         air_loop_hvac.supplyComponents.each do |component|
+		  runner.registerInfo("in component loop") 
+		  runner.registerInfo("component name #{component.name.to_s}") 
           # convert component to string name
           obj_type = component.iddObjectType.valueName.to_s
           # skip unless component is of relevant type
@@ -479,7 +481,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 
           # check for fan
           next unless ['Fan'].any? { |word| obj_type.include?(word) }
-
+          runner.registerInfo("in fan case") 
           supply_fan = component
           if supply_fan.to_FanConstantVolume.is_initialized
             supply_fan = supply_fan.to_FanConstantVolume.get
@@ -535,6 +537,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     equip_to_delete.each(&:remove)
 
     # remove old PVAV air loops; this must be done after removing zone equipment or it will cause segmentation fault
+	#add chunk in here
     pvav_air_loops.each do |pvav_air_loop|
 	  zones=pvav_air_loop.thermalZones
 	  runner.registerInfo("zones object #{zones}")
@@ -543,6 +546,19 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 		  zone_sched_data[zone.name.to_s]=air_loop_avail_sched
 		  runner.registerInfo("populating schedules") 
 	  end 
+	  pvav_air_loop.supplyComponents.each do |component| #get fan characteristics for PVAV 
+	     next unless ['Fan'].any? { |word| obj_type.include?(word) }
+		 fan_static_pressure = supply_fan.pressureRise
+         runner.registerInfo("in fan case") 
+	  	 pressure_rise = fan_static_pressure
+		 zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'] = pressure_rise
+		 motor_hp = std.fan_motor_horsepower(supply_fan) #based on existing fan, might need to take a different approach for small fans 
+		 fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(supply_fan, motor_bhp)[0] 
+		 zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'] = fan_motor_eff
+		 fan_eff = std.fan_baseline_impeller_efficiency(supply_fan)
+		 zone_fan_data[thermal_zone.name.to_s + 'fan_eff'] = fan_eff
+	  end 
+	  
 	  pvav_air_loop.remove
     end
 
