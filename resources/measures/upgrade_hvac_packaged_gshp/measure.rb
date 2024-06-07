@@ -547,6 +547,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 		  runner.registerInfo("populating schedules") 
 	  end 
 	  pvav_air_loop.supplyComponents.each do |component| #get fan characteristics for PVAV 
+	     obj_type = component.iddObjectType.valueName.to_s
 	     next unless ['Fan'].any? { |word| obj_type.include?(word) }
 		 fan_static_pressure = supply_fan.pressureRise
          runner.registerInfo("in fan case") 
