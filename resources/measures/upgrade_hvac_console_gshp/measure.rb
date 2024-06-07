@@ -145,7 +145,6 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
           ptacs << equip.to_ZoneHVACPackagedTerminalAirConditioner.get
           equip_to_delete << equip.to_ZoneHVACPackagedTerminalAirConditioner.get
 		  ptac_unit = equip.to_ZoneHVACPackagedTerminalAirConditioner.get
-		   runner.registerInfo("ptac #{ptac_unit}")
 		   sup_fan=ptac_unit.supplyAirFan
 		   if sup_fan.to_FanOnOff.is_initialized
 				  sup_fan = sup_fan.to_FanOnOff.get
@@ -372,7 +371,6 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 
     # Loop through each thermal zone and remove old PTAC/PTHP and replace it with a water-to-air ground source heat pump
     model.getThermalZones.each do |thermal_zone|
-      runner.registerInfo("thermal zone #{thermal_zone}")
       #skip if it has baseboards in baseline
       next if zones_to_skip.include? thermal_zone.name.get
       next if unconditioned_zones.include? thermal_zone.name.get
@@ -447,8 +445,6 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
       unitary_system.setHeatingCoil(new_heating_coil)
       unitary_system.setControllingZoneorThermostatLocation(thermal_zone)
 	  #add supply fan
-	  runner.registerInfo("zone fan data #{zone_fan_data}")
-	  runner.registerInfo("zone fan data empty? #{zone_fan_data.empty?()}")
 	  #check for existing fan data
 	  if  zone_fan_data.key?(thermal_zone.name.to_s) #[thermal_zone.name.to_s].exists?
 		  fan = OpenStudio::Model::FanConstantVolume.new(model)
@@ -680,7 +676,6 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 			  fan.setMotorEfficiency(fan_motor_eff)
 			  fan_eff = 0.55 #based on "small fan" status 
 			  fan.setFanEfficiency(fan_eff)
-			  runner.registerInfo("fan: motor_hp #{motor_hp}, fan_eff:  #{fan_eff}")
 			  fan.setFanTotalEfficiency(fan_eff * fan_motor_eff)
 			  #Set pressure rise based on assumption in OS standards for PTACs, a similar unit style 
 			  fan.setPressureRise(330.96) #setting to same value as PTACs in prototype, in PA 
