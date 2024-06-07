@@ -150,12 +150,14 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 		   if sup_fan.to_FanOnOff.is_initialized
 				  sup_fan = sup_fan.to_FanOnOff.get
 				  pressure_rise = sup_fan.pressureRise
-				  zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'] = pressure_rise
+				  zone_fan_data[thermal_zone.name.to_s] = Hash.new 
+				  zone_fan_data[thermal_zone.name.to_s]['pressure_rise'] = pressure_rise
 				  motor_hp = std.fan_motor_horsepower(sup_fan) #based on existing fan
+				  motor_bhp = std.fan_brake_horsepower(sup_fan)	
 				  fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(sup_fan, motor_bhp)[0] 
-				  zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'] = fan_motor_eff
+				  zone_fan_data[thermal_zone.name.to_s]['fan_motor_eff']= fan_motor_eff
 				  fan_eff = std.fan_baseline_impeller_efficiency(sup_fan)
-				  zone_fan_data[thermal_zone.name.to_s + 'fan_eff'] = fan_eff
+				  zone_fan_data[thermal_zone.name.to_s]['fan_eff']= fan_eff
 		  end 
         end
       end
@@ -169,15 +171,16 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 		  pthp_unit = equip.to_ZoneHVACPackagedTerminalHeatPump.get
 		  sup_fan=pthp_unit.supplyAirFan
           if sup_fan.to_FanOnOff.is_initialized
-			  sup_fan = sup_fan.to_FanOnOff.get
-			  pressure_rise = sup_fan.pressureRise
-			  zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'] = pressure_rise
-			  motor_hp = std.fan_motor_horsepower(sup_fan) #based on existing fan
-			  motor_bhp = std.fan_brake_horsepower(sup_fan)
-			  fan_motor_eff = standard_new_motor.fan_standard_minimum_motor_efficiency_and_size(sup_fan, motor_bhp)[0]
-			  zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'] = fan_motor_eff
-			  fan_eff = std.fan_baseline_impeller_efficiency(sup_fan)
-			  zone_fan_data[thermal_zone.name.to_s + 'fan_eff'] = fan_eff
+				  sup_fan = sup_fan.to_FanOnOff.get
+				  pressure_rise = sup_fan.pressureRise
+				  zone_fan_data[thermal_zone.name.to_s] = Hash.new 
+				  zone_fan_data[thermal_zone.name.to_s]['pressure_rise'] = pressure_rise
+				  motor_hp = std.fan_motor_horsepower(sup_fan) #based on existing fan
+				  motor_bhp = std.fan_brake_horsepower(sup_fan)	
+				  fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(sup_fan, motor_bhp)[0] 
+				  zone_fan_data[thermal_zone.name.to_s]['fan_motor_eff']= fan_motor_eff
+				  fan_eff = std.fan_baseline_impeller_efficiency(sup_fan)
+				  zone_fan_data[thermal_zone.name.to_s]['fan_eff']= fan_eff
 		  end 
         end
       end
@@ -369,7 +372,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 
     # Loop through each thermal zone and remove old PTAC/PTHP and replace it with a water-to-air ground source heat pump
     model.getThermalZones.each do |thermal_zone|
-
+      runner.registerInfo("thermal zone #{thermal_zone}")
       #skip if it has baseboards in baseline
       next if zones_to_skip.include? thermal_zone.name.get
       next if unconditioned_zones.include? thermal_zone.name.get
@@ -447,16 +450,16 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 	  runner.registerInfo("zone fan data #{zone_fan_data}")
 	  runner.registerInfo("zone fan data empty? #{zone_fan_data.empty?()}")
 	  #check for existing fan data
-	  if ! zone_fan_data.empty?
+	  if  zone_fan_data.key?(thermal_zone.name.to_s) #[thermal_zone.name.to_s].exists?
 		  fan = OpenStudio::Model::FanConstantVolume.new(model)
 		  fan.setName("#{thermal_zone.name} Fan")
-		  fan.setMotorEfficiency(zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff']) #Setting assuming similar size to previous fan, but new and subject to current standards 
+		  fan.setMotorEfficiency(zone_fan_data[thermal_zone.name.to_s]['fan_motor_eff']) #Setting assuming similar size to previous fan, but new and subject to current standards 
 		  fan_eff = 0.55 #since console unit fans would be considered small, set efficiency based on small fan 
 		  fan.setFanEfficiency(fan_eff)
-		  fan.setFanTotalEfficiency(fan_eff*zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'])
+		  fan.setFanTotalEfficiency(fan_eff*zone_fan_data[thermal_zone.name.to_s]['fan_motor_eff'])
 		  #Set pressure rise based on previous fan, assuming similar pressure drops to before 
-		  fan.setPressureRise(zone_fan_data[thermal_zone.name.to_s + 'pressure_rise']) 
-	  else #case where there was not a fan present previously 
+		  fan.setPressureRise(zone_fan_data[thermal_zone.name.to_s]['pressure_rise'])
+	 else #case where there was not a fan present previously 
 		  fan = OpenStudio::Model::FanConstantVolume.new(model)
 		  fan.setName("#{thermal_zone.name} Fan")
           #autosize other attributes for now, and then set fan and motor efficiencies based on sizing 
