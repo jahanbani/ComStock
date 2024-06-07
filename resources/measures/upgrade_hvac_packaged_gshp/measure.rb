@@ -454,7 +454,6 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
           # get supply fan static pressure
           fan_static_pressure = supply_fan.pressureRise
 		  #Save fan data to a hash for use with the new fan 
-		  runner.registerInfo("in unitary sys case") 
 		  pressure_rise = fan_static_pressure
 		  zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'] = pressure_rise
 		  motor_hp = std.fan_motor_horsepower(supply_fan) #based on existing fan, might need to take a different approach for small fans 
@@ -469,8 +468,6 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       else
         # loop through components
         air_loop_hvac.supplyComponents.each do |component|
-		  runner.registerInfo("in component loop") 
-		  runner.registerInfo("component name #{component.name.to_s}") 
           # convert component to string name
           obj_type = component.iddObjectType.valueName.to_s
           # skip unless component is of relevant type
@@ -481,7 +478,6 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 
           # check for fan
           next unless ['Fan'].any? { |word| obj_type.include?(word) }
-          runner.registerInfo("in fan case") 
           supply_fan = component
           if supply_fan.to_FanConstantVolume.is_initialized
             supply_fan = supply_fan.to_FanConstantVolume.get
@@ -508,7 +504,6 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
           control_zone = air_loop_hvac.thermalZones[0]
           # set unitary availability schedule to be always on. This will be used in new unitary system object.
           unitary_availability_sched = model.alwaysOnDiscreteSchedule
-		  runner.registerInfo("in non unitary sys case")
 		  #save data from existing Fan		  
 		  pressure_rise = fan_static_pressure
 		  zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'] = pressure_rise
