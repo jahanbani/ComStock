@@ -546,20 +546,6 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 		  zone_sched_data[zone.name.to_s]=air_loop_avail_sched
 		  runner.registerInfo("populating schedules") 
 	  end 
-	  pvav_air_loop.supplyComponents.each do |component| #get fan characteristics for PVAV 
-	     obj_type = component.iddObjectType.valueName.to_s
-	     next unless ['Fan'].any? { |word| obj_type.include?(word) }
-		 fan_static_pressure = supply_fan.pressureRise
-         runner.registerInfo("in fan case") 
-	  	 pressure_rise = fan_static_pressure
-		 zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'] = pressure_rise
-		 motor_hp = std.fan_motor_horsepower(supply_fan) #based on existing fan, might need to take a different approach for small fans 
-		 fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(supply_fan, motor_bhp)[0] 
-		 zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'] = fan_motor_eff
-		 fan_eff = std.fan_baseline_impeller_efficiency(supply_fan)
-		 zone_fan_data[thermal_zone.name.to_s + 'fan_eff'] = fan_eff
-	  end 
-	  
 	  pvav_air_loop.remove
     end
 
@@ -1051,7 +1037,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     			if fan.maximumFlowRate.is_initialized
     				fan_air_flow = fan.maximumFlowRate.get #need to id zone 
 					thermal_zone=unitary_sys.controllingZoneorThermostatLocation.get	#need to check if nil? 
-					if zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'].nil? #handle case where parameters not already set 
+					if zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'].nil? #handle case where parameters not already set, such as PVAV systems that would have had very differently sized fans in baseline  
 					   motor_bhp = std.fan_brake_horsepower(fan)
 					   fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(fan, motor_bhp)[0] ##AA updated from standard new motor 
 					   fan_eff = std.fan_baseline_impeller_efficiency(fan)
