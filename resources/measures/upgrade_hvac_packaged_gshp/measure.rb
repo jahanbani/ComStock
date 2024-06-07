@@ -640,7 +640,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	  #need to add check for nil values 
 	  fan.setMotorEfficiency(zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff']) unless zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'].nil? #Setting assuming similar size to previous fan, but new and subject to current standards 
       fan.setFanEfficiency(zone_fan_data[thermal_zone.name.to_s + 'fan_eff']) unless zone_fan_data[thermal_zone.name.to_s + 'fan_eff'].nil?
-	  fan.setFanTotalEfficiency(fan_eff*zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff']) unless zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'].nil? 
+	  fan.setFanTotalEfficiency(zone_fan_data[thermal_zone.name.to_s + 'fan_eff']*zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff']) unless zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'].nil? 
 	  #Set pressure rise based on previous fan, assuming similar pressure drops to before 
 	  fan.setPressureRise(zone_fan_data[thermal_zone.name.to_s + 'pressure_rise']) unless zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'].nil? 
       #fan.setMotorEfficiency(fan_mot_eff) unless fan_mot_eff.nil?
