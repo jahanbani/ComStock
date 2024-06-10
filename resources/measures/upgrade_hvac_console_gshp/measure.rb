@@ -245,6 +245,9 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
         end
       end
     end
+	
+	# delete equipment from original loop
+    equip_to_delete.each(&:remove) 
 
 
 
@@ -543,7 +546,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
     end
 	
 	 # delete equipment from original loop
-       equip_to_delete.each(&:remove) 
+     # equip_to_delete.each(&:remove) 
 
     # for zones that got skipped, check if there are already baseboards. if not, add them. 
     model.getThermalZones.each do |thermal_zone|
