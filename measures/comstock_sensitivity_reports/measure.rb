@@ -1759,6 +1759,96 @@ class ComStockSensitivityReports < OpenStudio::Measure::ReportingMeasure
     runner.registerValue('com_report_hvac_water_air_heat_pump_heating_total_electric_j', wa_hp_heating_total_electric_j)
     runner.registerValue('com_report_hvac_water_air_heat_pump_heating_total_load_j', wa_hp_heating_total_load_j)
 
+    # water to water heat pump cooling capacity, load, and efficiencies
+    ww_hp_cooling_total_electric_j = 0.0
+    ww_hp_cooling_total_load_j = 0.0
+    ww_hp_cooling_load_weighted_cop = 0.0
+    ww_hp_cooling_load_weighted_design_cop = 0.0
+    ww_hp_cooling_total_capacity_w = 0.0
+    model.getHeatPumpPlantLoopEIRCoolings.sort.each do |heat_pump|
+      # get water to water heat pump cooling capacity and cop
+      capacity_w = 0.0
+      # capacity
+      if heat_pump.referenceCapacity.is_initialized
+        capacity_w = heat_pump.referenceCapacity.get
+      elsif heat_pump.autosizedReferenceCapacity.is_initialized
+        capacity_w = heat_pump.autosizedReferenceCapacity.get
+      else
+        runner.registerWarning("Cooling capacity not available for heat pump '#{heat_pump.name}'.")
+      end
+      ww_hp_cooling_total_capacity_w += capacity_w
+
+      hp_design_cop = heat_pump.referenceCoefficientofPerformance
+
+      # get Cooling Coil Total Cooling Energy
+      hp_cooling_energy_j = sql_get_report_variable_data_double(runner, sql, heat_pump, "Heat Pump Load Side Heat Transfer Energy")
+
+      # get Cooling Coil Electric Energy
+      hp_electric_energy_j = sql_get_report_variable_data_double(runner, sql, heat_pump, "Heat Pump #{elec} Energy")
+
+      # add to weighted load cop
+      hp_annual_cop = hp_cooling_energy_j > 0.0 ? hp_cooling_energy_j / hp_electric_energy_j : 0
+      ww_hp_cooling_total_electric_j += hp_electric_energy_j
+      ww_hp_cooling_total_load_j += hp_cooling_energy_j
+      ww_hp_cooling_load_weighted_cop += hp_cooling_energy_j * hp_annual_cop
+      ww_hp_cooling_load_weighted_design_cop += hp_cooling_energy_j * hp_design_cop
+    end
+    
+    runner.registerValue('com_report_hvac_water_water_heat_pump_cooling_total_capacity_w', ww_hp_cooling_total_capacity_w)
+    average_water_water_hp_cooling_cop = ww_hp_cooling_total_load_j > 0.0 ? ww_hp_cooling_load_weighted_cop / ww_hp_cooling_total_load_j : 0.0
+    runner.registerValue('com_report_hvac_water_water_heat_pump_cooling_average_cop', average_water_water_hp_cooling_cop)
+    design_water_water_hp_cooling_cop = ww_hp_cooling_total_load_j > 0.0 ? ww_hp_cooling_load_weighted_design_cop / ww_hp_cooling_total_load_j : 0.0
+    runner.registerValue('com_report_hvac_water_water_heat_pump_cooling_design_cop', design_water_water_hp_cooling_cop)
+
+    # report out water to water heat pump cooling load and electricity
+    runner.registerValue('com_report_hvac_water_water_heat_pump_cooling_total_electric_j', ww_hp_cooling_total_electric_j)
+    runner.registerValue('com_report_hvac_water_water_heat_pump_cooling_total_load_j', ww_hp_cooling_total_load_j)
+
+    # water to water heat pump heating capacity, load, and efficiencies
+    ww_hp_heating_total_electric_j = 0.0
+    ww_hp_heating_total_load_j = 0.0
+    ww_hp_heating_load_weighted_cop = 0.0
+    ww_hp_heating_load_weighted_design_cop = 0.0
+    ww_hp_heating_total_capacity_w = 0.0
+    model.getHeatPumpPlantLoopEIRHeatings.sort.each do |heat_pump|
+      # get water to water heat pump heating capacity and cop
+      capacity_w = 0.0
+      # capacity
+      if heat_pump.referenceCapacity.is_initialized
+        capacity_w = heat_pump.referenceCapacity.get
+      elsif heat_pump.autosizedReferenceCapacity.is_initialized
+        capacity_w = heat_pump.autosizedReferenceCapacity.get
+      else
+        runner.registerWarning("Heating capacity not available for heat pump '#{heat_pump.name}'.")
+      end
+      ww_hp_heating_total_capacity_w += capacity_w
+
+      hp_design_cop = heat_pump.referenceCoefficientofPerformance
+
+      # get Heating Coil Heating Energy
+      hp_heating_energy_j = sql_get_report_variable_data_double(runner, sql, heat_pump, "Heat Pump Load Side Heat Transfer Energy")
+
+      # get Heating Coil Electric Energy
+      hp_electric_energy_j = sql_get_report_variable_data_double(runner, sql, heat_pump, "Heat Pump #{elec} Energy")
+
+      # add to weighted load cop
+      hp_annual_cop = hp_heating_energy_j > 0.0 ? hp_heating_energy_j / hp_electric_energy_j : 0
+      ww_hp_heating_total_electric_j += hp_electric_energy_j
+      ww_hp_heating_total_load_j += hp_heating_energy_j
+      ww_hp_heating_load_weighted_cop += hp_heating_energy_j * hp_annual_cop
+      ww_hp_heating_load_weighted_design_cop += hp_heating_energy_j * hp_design_cop
+    end
+
+    runner.registerValue('com_report_hvac_water_water_heat_pump_heating_total_capacity_w', ww_hp_heating_total_capacity_w)
+    average_water_water_hp_heating_cop = ww_hp_heating_total_load_j > 0.0 ? ww_hp_heating_load_weighted_cop / ww_hp_heating_total_load_j : 0.0
+    runner.registerValue('com_report_hvac_water_water_heat_pump_heating_average_cop', average_water_water_hp_heating_cop)
+    design_water_water_hp_heating_cop = ww_hp_heating_total_load_j > 0.0 ? ww_hp_heating_load_weighted_design_cop / ww_hp_heating_total_load_j : 0.0
+    runner.registerValue('com_report_hvac_water_water_heat_pump_heating_design_cop', design_water_water_hp_heating_cop)
+
+    # report out water to water heat pump heating load and electricity
+    runner.registerValue('com_report_hvac_water_water_heat_pump_heating_total_electric_j', ww_hp_heating_total_electric_j)
+    runner.registerValue('com_report_hvac_water_water_heat_pump_heating_total_load_j', ww_hp_heating_total_load_j)
+
     # DX cooling coils capacity, load, and efficiencies
     dx_cooling_total_electric_j = 0.0
     dx_cooling_total_load_j = 0.0
