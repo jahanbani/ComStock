@@ -162,6 +162,10 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
         return true
       end
     end
+	
+	#build standard 
+	template = 'ComStock 90.1-2019'
+    std = Standard.build(template)
 
     # make list of zone equipment to delete
     equip_to_delete = []
@@ -197,6 +201,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     psz_air_loops = []
     pvav_air_loops = []
     applicable_area_m2 = 0
+	zone_sched_data=Hash.new  #to hold schedule data 
     all_air_loops.each do |air_loop_hvac|
       # skip units that are not single zone
       if air_loop_hvac.thermalZones.length == 1
@@ -378,7 +383,9 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     supply_air_flow_m3_per_s = 'tmp'
     orig_clg_coil_gross_cap = nil
     orig_htg_coil_gross_cap = nil
-
+    
+	
+	zone_fan_data=Hash.new 
     # Loop through each packaged single zone system and replace it with a water-to-air ground source heat pump system
     psz_air_loops.each do |air_loop_hvac|
       thermal_zone = air_loop_hvac.thermalZones[0]
@@ -415,6 +422,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
           dehumid_type = unitary_sys.dehumidificationControlType
           # get supply fan operation schedule
           supply_fan_op_sched = unitary_sys.supplyAirFanOperatingModeSchedule.get
+		  zone_sched_data[thermal_zone.name.to_s]=supply_fan_op_sched
           # get supply fan availability schedule
           supply_fan = unitary_sys.supplyFan.get
           # convert supply fan to appropriate object to access methods
@@ -445,6 +453,15 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
           fan_mot_eff = supply_fan.motorEfficiency
           # get supply fan static pressure
           fan_static_pressure = supply_fan.pressureRise
+		  #Save fan data to a hash for use with the new fan 
+		  pressure_rise = fan_static_pressure
+		  zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'] = pressure_rise
+		  motor_hp = std.fan_motor_horsepower(supply_fan) #based on existing fan
+		  motor_bhp = std.fan_brake_horsepower(supply_fan)
+		  fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(supply_fan, motor_bhp)[0] ##AA updated from standard new motor 
+		  zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'] = fan_motor_eff
+		  fan_eff = std.fan_baseline_impeller_efficiency(supply_fan)
+		  zone_fan_data[thermal_zone.name.to_s + 'fan_eff'] = fan_eff
         end
 
       # get non-unitary system objects.
@@ -460,8 +477,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
           equip_to_delete << component
 
           # check for fan
-          next unless ['Fan'].any? { |word| obj_type.include?(word) }
-
+          next unless (['Fan'].any? { |word| obj_type.include?(word) } and ! ['Exhaust'].any? { |word| obj_type.include?(word) } ) 
           supply_fan = component
           if supply_fan.to_FanConstantVolume.is_initialized
             supply_fan = supply_fan.to_FanConstantVolume.get
@@ -473,16 +489,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
             runner.registerError("Supply fan type for #{air_loop_hvac.name} not supported.")
             return false
           end
-          # get the availability schedule
-          supply_fan_avail_sched = supply_fan.availabilitySchedule
-          if supply_fan_avail_sched.to_ScheduleConstant.is_initialized
-            supply_fan_avail_sched = supply_fan_avail_sched.to_ScheduleConstant.get
-          elsif supply_fan_avail_sched.to_ScheduleRuleset.is_initialized
-            supply_fan_avail_sched = supply_fan_avail_sched.to_ScheduleConstant.get
-          else
-            runner.registerError("Supply fan availability schedule type for #{supply_fan.name} not supported.")
-            return false
-          end
+		  
           # get supply fan motor efficiency
           fan_tot_eff = supply_fan.fanTotalEfficiency
           # get supply motor efficiency
@@ -497,8 +504,19 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
           control_zone = air_loop_hvac.thermalZones[0]
           # set unitary availability schedule to be always on. This will be used in new unitary system object.
           unitary_availability_sched = model.alwaysOnDiscreteSchedule
+		  #save data from existing Fan		  
+		  pressure_rise = fan_static_pressure
+		  zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'] = pressure_rise
+		  motor_hp = std.fan_motor_horsepower(supply_fan) 
+		  motor_bhp = std.fan_brake_horsepower(supply_fan) #based on existing fan 
+		  fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(supply_fan, motor_bhp)[0] 
+		  zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'] = fan_motor_eff
+		  fan_eff = std.fan_baseline_impeller_efficiency(supply_fan)
+		  zone_fan_data[thermal_zone.name.to_s + 'fan_eff'] = fan_eff
         end
       end
+	  
+
 
       # # Get the min OA flow rate from the OA; this is used below
       # oa_system = air_loop_hvac.airLoopHVACOutdoorAirSystem.get
@@ -517,8 +535,17 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     equip_to_delete.each(&:remove)
 
     # remove old PVAV air loops; this must be done after removing zone equipment or it will cause segmentation fault
+	#add chunk in here
     pvav_air_loops.each do |pvav_air_loop|
-      pvav_air_loop.remove
+	  zones=pvav_air_loop.thermalZones
+	  runner.registerInfo("zones object #{zones}")
+	  air_loop_avail_sched = pvav_air_loop.availabilitySchedule 
+	  for zone in zones  #populate schedule from main air loop and apply to each zone for now 
+	      runner.registerInfo("zone schedule #{air_loop_avail_sched.name.to_s}")
+		  zone_sched_data[zone.name.to_s]=air_loop_avail_sched
+		  runner.registerInfo("populating schedules") 
+	  end 
+	  pvav_air_loop.remove
     end
 
     #also remove any EMS objects tied to PVAV air loops that are being removed
@@ -606,9 +633,16 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       # add supply fan
       fan = OpenStudio::Model::FanConstantVolume.new(model)
       fan.setName("#{air_loop_hvac.name} Fan")
-      fan.setFanEfficiency(fan_tot_eff) # from PNNL
-      fan.setPressureRise(fan_static_pressure)
-      fan.setMotorEfficiency(fan_mot_eff) unless fan_mot_eff.nil?
+      #fan.setFanEfficiency(fan_tot_eff) # from PNNL
+      #fan.setPressureRise(fan_static_pressure)
+	  #set parameters based on current code applied to capacity of previous fan 
+	  #need to add check for nil values 
+	  fan.setMotorEfficiency(zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff']) unless zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'].nil? #Setting assuming similar size to previous fan, but new and subject to current standards 
+      fan.setFanEfficiency(zone_fan_data[thermal_zone.name.to_s + 'fan_eff']) unless zone_fan_data[thermal_zone.name.to_s + 'fan_eff'].nil?
+	  fan.setFanTotalEfficiency(zone_fan_data[thermal_zone.name.to_s + 'fan_eff']*zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff']) unless zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'].nil? 
+	  #Set pressure rise based on previous fan, assuming similar pressure drops to before 
+	  fan.setPressureRise(zone_fan_data[thermal_zone.name.to_s + 'pressure_rise']) unless zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'].nil? 
+      #fan.setMotorEfficiency(fan_mot_eff) unless fan_mot_eff.nil?
 
       # Create a new water-to-air ground source heat pump system
       unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
@@ -618,7 +652,15 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       unitary_system.setControllingZoneorThermostatLocation(thermal_zone)
       unitary_system.setSupplyFan(fan)
       unitary_system.setFanPlacement(fan_location)
-      unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOnDiscreteSchedule)
+	  runner.registerInfo("schedule")
+	  runner.registerInfo("#{zone_sched_data[thermal_zone.name.to_s]}") 
+	  if  zone_sched_data.has_key?(thermal_zone.name.to_s) 
+		  runner.registerInfo("setting supply fan op mode schedule") 
+		  unitary_system.setSupplyAirFanOperatingModeSchedule(zone_sched_data[thermal_zone.name.to_s]) 
+		  unitary_system.setAvailabilitySchedule(zone_sched_data[thermal_zone.name.to_s]) 
+	  else
+		runner.registerInfo("schedule not found") 
+	  end 
       unitary_system.setMaximumOutdoorDryBulbTemperatureforSupplementalHeaterOperation(OpenStudio.convert(40.0, 'F',
                                                                                                           'C').get)
       unitary_system.setName("#{air_loop_hvac.name} Unitary HP")
@@ -994,7 +1036,16 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     			fan = unitary_sys.supplyFan.get.to_FanConstantVolume.get
     			# air flow
     			if fan.maximumFlowRate.is_initialized
-    				fan_air_flow = fan.maximumFlowRate.get
+    				fan_air_flow = fan.maximumFlowRate.get #need to id zone 
+					thermal_zone=unitary_sys.controllingZoneorThermostatLocation.get	#need to check if nil? 
+					if zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'].nil? #handle case where parameters not already set, such as PVAV systems that would have had very differently sized fans in baseline  
+					   motor_bhp = std.fan_brake_horsepower(fan)
+					   fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(fan, motor_bhp)[0] ##AA updated from standard new motor 
+					   fan_eff = std.fan_baseline_impeller_efficiency(fan)
+                       fan.setFanEfficiency(fan_eff)
+					   fan.setMotorEfficiency(fan_motor_eff)
+					   fan.setFanTotalEfficiency(fan_eff*fan_motor_eff) 
+					end 
     			else
     				runner.registerError("Unable to retrieve maximum air flow for fan (#{fan.name})")
     				return false
