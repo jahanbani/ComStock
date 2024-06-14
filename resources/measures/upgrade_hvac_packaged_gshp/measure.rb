@@ -658,11 +658,11 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 		  runner.registerInfo("setting supply fan op mode schedule") 
 		  runner.registerInfo("thermal zone name #{thermal_zone.name.to_s}")
 		  runner.registerInfo("name of supply fan op mode schedule being set  #{zone_sched_data[thermal_zone.name.to_s].name.to_s}")
-		  unitary_system.setSupplyAirFanOperatingModeSchedule(zone_sched_data[supply_fan_avail_sched]) 
+		  unitary_system.setSupplyAirFanOperatingModeSchedule(supply_fan_avail_sched) 
 		  unitary_system.setAvailabilitySchedule(zone_sched_data[thermal_zone.name.to_s]) 
 	  else
 		runner.registerInfo("schedule not found") 
-		unitary_system.setSupplyAirFanOperatingModeSchedule(zone_sched_data[supply_fan_avail_sched]) 
+		unitary_system.setSupplyAirFanOperatingModeSchedule(supply_fan_avail_sched) 
 	  end 
       unitary_system.setMaximumOutdoorDryBulbTemperatureforSupplementalHeaterOperation(OpenStudio.convert(40.0, 'F',
                                                                                                           'C').get)
