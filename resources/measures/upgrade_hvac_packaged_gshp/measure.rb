@@ -654,12 +654,15 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       unitary_system.setFanPlacement(fan_location)
 	  runner.registerInfo("schedule")
 	  runner.registerInfo("#{zone_sched_data[thermal_zone.name.to_s]}") 
-	  if  zone_sched_data.has_key?(thermal_zone.name.to_s) 
+	  if  zone_sched_data.has_key?(thermal_zone.name.to_s) #maybe need to check that this is not empty 
 		  runner.registerInfo("setting supply fan op mode schedule") 
-		  unitary_system.setSupplyAirFanOperatingModeSchedule(zone_sched_data[thermal_zone.name.to_s]) 
+		  runner.registerInfo("thermal zone name #{thermal_zone.name.to_s}")
+		  runner.registerInfo("name of supply fan op mode schedule being set  #{zone_sched_data[thermal_zone.name.to_s].name.to_s}")
+		  unitary_system.setSupplyAirFanOperatingModeSchedule(zone_sched_data[supply_fan_avail_sched]) 
 		  unitary_system.setAvailabilitySchedule(zone_sched_data[thermal_zone.name.to_s]) 
 	  else
 		runner.registerInfo("schedule not found") 
+		unitary_system.setSupplyAirFanOperatingModeSchedule(zone_sched_data[supply_fan_avail_sched]) 
 	  end 
       unitary_system.setMaximumOutdoorDryBulbTemperatureforSupplementalHeaterOperation(OpenStudio.convert(40.0, 'F',
                                                                                                           'C').get)
@@ -1053,7 +1056,9 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 					   air_loop = unitary_sys.airLoopHVAC.get
 					   runner.registerInfo("air loop #{air_loop}")
 					   allowable_fan_bhp = std.air_loop_hvac_allowable_system_brake_horsepower(air_loop) #need to make sure type is named appropriately  
+					   runner.registerInfo("zone name #{thermal_zone.name.to_s}") 
 					   allowable_power_w = allowable_fan_bhp * 746 / fan.motorEfficiency
+					   runner.registerInfo("allowable fan power #{allowable_power_w }") 
 					   std.fan_adjust_pressure_rise_to_meet_fan_power(fan, allowable_power_w)
 					   # fan = std.create_fan_by_name(model, 'Packaged_RTU_SZ_AC_CAV_Fan') 
 					   # pressure_rise ||= fan_json['Packaged_RTU_SZ_AC_CAV_Fan']['pressure_rise']
