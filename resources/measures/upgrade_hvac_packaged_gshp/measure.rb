@@ -944,6 +944,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 
     # scale coil performance data and assign lookup tables
     model.getAirLoopHVACUnitarySystems.each do |unitary_sys|
+	    runner.registerInfo("air loop name #{unitary_sys.name.to_s}")
+		#runner.registerInfo("allowable bhp #{air_loop_hvac_allowable_system_brake_horsepower(unitary_sys)}")
     	# puts "*************************************"
     	# puts "*************************************"
     	# puts "Assigning performance curve data for unitary system (#{unitary_sys.name})"
@@ -1045,6 +1047,22 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
                        fan.setFanEfficiency(fan_eff)
 					   fan.setMotorEfficiency(fan_motor_eff)
 					   fan.setFanTotalEfficiency(fan_eff*fan_motor_eff) 
+					   fan_json = std.get_fan_from_standards()
+					   fan.setPressureRise(622.1) #pressure rise in pascals for Packaged_RTU_SZ_AC_CAV_Fan object 
+					   #adjust pressure rise if needed
+					   air_loop = unitary_sys.airLoopHVAC.get
+					   runner.registerInfo("air loop #{air_loop}")
+					   allowable_fan_bhp = std.air_loop_hvac_allowable_system_brake_horsepower(air_loop) #need to make sure type is named appropriately  
+					   allowable_power_w = allowable_fan_bhp * 746 / fan.motorEfficiency
+					   std.fan_adjust_pressure_rise_to_meet_fan_power(fan, allowable_power_w)
+					   # fan = std.create_fan_by_name(model, 'Packaged_RTU_SZ_AC_CAV_Fan') 
+					   # pressure_rise ||= fan_json['Packaged_RTU_SZ_AC_CAV_Fan']['pressure_rise']
+					   # runner.registerInfo("#{fan.pressure_rise}")
+					   # runner.registerInfo("fan json")
+					   #runner.registerInfo("#{fan_json.name}")
+					   #new_fan = std.create_fan_constant_volume_from_json(model, fan_json)
+					   #runner.registerInfo("new fan created from json")
+					   #runner.registerInfo("#{new_fan}")
 					end 
     			else
     				runner.registerError("Unable to retrieve maximum air flow for fan (#{fan.name})")
