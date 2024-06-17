@@ -1055,11 +1055,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 					   fan.setPressureRise(622.1) #pressure rise in pascals for Packaged_RTU_SZ_AC_CAV_Fan object 
 					   #adjust pressure rise if needed
 					   air_loop = unitary_sys.airLoopHVAC.get
-					   runner.registerInfo("air loop #{air_loop}")
 					   allowable_fan_bhp = std.air_loop_hvac_allowable_system_brake_horsepower(air_loop) #need to make sure type is named appropriately  
-					   runner.registerInfo("zone name #{thermal_zone.name.to_s}") 
-					   allowable_power_w = allowable_fan_bhp * 746 / fan.motorEfficiency
-					   runner.registerInfo("allowable fan power #{allowable_power_w }") 
+					   allowable_power_w = allowable_fan_bhp * 746 / fan.motorEfficiency 
 					   std.fan_adjust_pressure_rise_to_meet_fan_power(fan, allowable_power_w)
 					end 
     			else
