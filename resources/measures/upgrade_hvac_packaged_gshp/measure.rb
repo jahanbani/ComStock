@@ -422,7 +422,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
           dehumid_type = unitary_sys.dehumidificationControlType
           # get supply fan operation schedule
           supply_fan_op_sched = unitary_sys.supplyAirFanOperatingModeSchedule.get
-		  zone_sched_data[thermal_zone.name.to_s]=supply_fan_op_sched
+		  air_loop_avail_sched = air_loop_hvac.availabilitySchedule 
+		  zone_sched_data[thermal_zone.name.to_s]=air_loop_avail_sched #setting based on availability schedule
           # get supply fan availability schedule
           supply_fan = unitary_sys.supplyFan.get
           # convert supply fan to appropriate object to access methods
@@ -458,7 +459,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 		  zone_fan_data[thermal_zone.name.to_s + 'pressure_rise'] = pressure_rise
 		  motor_hp = std.fan_motor_horsepower(supply_fan) #based on existing fan
 		  motor_bhp = std.fan_brake_horsepower(supply_fan)
-		  fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(supply_fan, motor_bhp)[0] ##AA updated from standard new motor 
+		  fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(supply_fan, motor_bhp)[0] 
 		  zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'] = fan_motor_eff
 		  fan_eff = std.fan_baseline_impeller_efficiency(supply_fan)
 		  zone_fan_data[thermal_zone.name.to_s + 'fan_eff'] = fan_eff
@@ -1045,7 +1046,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 					thermal_zone=unitary_sys.controllingZoneorThermostatLocation.get	#need to check if nil? 
 					if zone_fan_data[thermal_zone.name.to_s + 'fan_motor_eff'].nil? #handle case where parameters not already set, such as PVAV systems that would have had very differently sized fans in baseline  
 					   motor_bhp = std.fan_brake_horsepower(fan)
-					   fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(fan, motor_bhp)[0] ##AA updated from standard new motor 
+					   fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(fan, motor_bhp)[0]
 					   fan_eff = std.fan_baseline_impeller_efficiency(fan)
                        fan.setFanEfficiency(fan_eff)
 					   fan.setMotorEfficiency(fan_motor_eff)
@@ -1060,14 +1061,6 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 					   allowable_power_w = allowable_fan_bhp * 746 / fan.motorEfficiency
 					   runner.registerInfo("allowable fan power #{allowable_power_w }") 
 					   std.fan_adjust_pressure_rise_to_meet_fan_power(fan, allowable_power_w)
-					   # fan = std.create_fan_by_name(model, 'Packaged_RTU_SZ_AC_CAV_Fan') 
-					   # pressure_rise ||= fan_json['Packaged_RTU_SZ_AC_CAV_Fan']['pressure_rise']
-					   # runner.registerInfo("#{fan.pressure_rise}")
-					   # runner.registerInfo("fan json")
-					   #runner.registerInfo("#{fan_json.name}")
-					   #new_fan = std.create_fan_constant_volume_from_json(model, fan_json)
-					   #runner.registerInfo("new fan created from json")
-					   #runner.registerInfo("#{new_fan}")
 					end 
     			else
     				runner.registerError("Unable to retrieve maximum air flow for fan (#{fan.name})")
