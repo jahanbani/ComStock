@@ -539,12 +539,9 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	#add chunk in here
     pvav_air_loops.each do |pvav_air_loop|
 	  zones=pvav_air_loop.thermalZones
-	  runner.registerInfo("zones object #{zones}")
 	  air_loop_avail_sched = pvav_air_loop.availabilitySchedule 
 	  for zone in zones  #populate schedule from main air loop and apply to each zone for now 
-	      runner.registerInfo("zone schedule #{air_loop_avail_sched.name.to_s}")
 		  zone_sched_data[zone.name.to_s]=air_loop_avail_sched
-		  runner.registerInfo("populating schedules") 
 	  end 
 	  pvav_air_loop.remove
     end
