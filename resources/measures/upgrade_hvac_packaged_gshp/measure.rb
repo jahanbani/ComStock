@@ -538,6 +538,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     # remove old PVAV air loops; this must be done after removing zone equipment or it will cause segmentation fault
 	#add chunk in here
     pvav_air_loops.each do |pvav_air_loop|
+	  runner.registerInfo("current time starting zone loop #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
 	  zones=pvav_air_loop.thermalZones
 	  air_loop_avail_sched = pvav_air_loop.availabilitySchedule 
 	  for zone in zones  #populate schedule from main air loop and apply to each zone for now 
@@ -545,6 +546,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	  end 
 	  pvav_air_loop.remove
     end
+	
+	runner.registerInfo("current time ending zone loop #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
 
     #also remove any EMS objects tied to PVAV air loops that are being removed
     # Get all EMS objects in the model
@@ -559,6 +562,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       runner.registerInfo("Removing unused PVAV EMS objects from the model.")
       object_to_remove.remove
     end
+	
+	runner.registerInfo("current time line 566 #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
 
     # loop through thermal zones and add
     model.getThermalZones.each do |thermal_zone|
@@ -706,8 +711,13 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       # get outlet node of preheat coil to place setpoint manager
       preheat_sm_location = preheat_coil.outletModelObject.get.to_Node.get
       preheat_coil_setpoint_manager.addToNode(preheat_sm_location)
+	  
+	  
+	 runner.registerInfo("current time line 716 #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
     
     end
+	
+	runner.registerInfo("current time line 720 #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
 
     # for zones that got skipped, check if there are already baseboards. if not, add them. 
     model.getThermalZones.each do |thermal_zone|
@@ -723,7 +733,10 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
           baseboard.addToThermalZone(thermal_zone)
         end
       end
+	  runner.registerInfo("current time line 736 #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
     end
+	
+	runner.registerInfo("current time line 739 #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
 
     # add dcv to air loop if dcv arg is true
     if dcv == true
@@ -771,6 +784,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       ervs = 0
       ineligible_space_types = 0
       selected_air_loops = []
+	  
+	  runner.registerInfo("current time line 788 #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
       model.getAirLoopHVACs.each do |air_loop_hvac|
         
         # check for prevelance of OA system in air loop; skip if none
@@ -868,7 +883,11 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
           return  false
         end
       end
+	  
+	   runner.registerInfo("current time line 887 #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
     end
+	
+	runner.registerInfo("current time line 890 #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
 
     # add economizer if economizer arg is true
     if econ == true
@@ -930,6 +949,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
           return  false
         end
       end
+	  
+	  runner.registerInfo("current time line 953 #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
     end
 
     # do sizing run to get coil capacities to scale coil performance data
@@ -939,6 +960,9 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     	# puts("directory: #{Dir.pwd}/CoilCurveScalingSR")
     	return false
     end
+	
+	
+	runner.registerInfo("current time line 956 #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
 
     #apply sizing values
     model.applySizingValues
@@ -1068,7 +1092,11 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     		runner.registerError("Could not find fan for unitary system (#{unitary_sys.name})")
     		return false
     	end
+		
+		runner.registerInfo("current time line 1096 #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
     end
+	
+	runner.registerInfo("current time line 1099 #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
 
     # add output variable for GHEDesigner
     reporting_frequency = 'Hourly'
@@ -1242,6 +1270,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 
     runner.registerFinalCondition("Replaced #{psz_air_loops.size} packaged single zone RTUs  and #{pvav_air_loops.size} PVAVs with packaged water-to-air ground source heat pumps.")
     true
+	
+	runner.registerInfo("current time line 1274 #{Time.now.strftime("%d/%m/%Y %H:%M:%S")}")
   end
 end
 
