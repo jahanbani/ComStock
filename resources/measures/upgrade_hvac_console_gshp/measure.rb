@@ -452,9 +452,12 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
       unitary_system.setControllingZoneorThermostatLocation(thermal_zone)
 	  #add supply fan
 	  #check for existing fan data
+	  fan = OpenStudio::Model::FanVariableVolume.new(model)
+	  fan.setName("#{thermal_zone.name} Fan")
+	  #set fan power curve to be linear to approximate desired behavior 
+	  fan.setFanPowerCoefficient1(0) #may need to make this 0.1 to respect a minimum
+	  fan.setFanPowerCoefficient2(1) 
 	  if  zone_fan_data.key?(thermal_zone.name.to_s) #[thermal_zone.name.to_s].exists?
-		  fan = OpenStudio::Model::FanVariableVolume.new(model)
-		  fan.setName("#{thermal_zone.name} Fan")
 		  fan.setMotorEfficiency(zone_fan_data[thermal_zone.name.to_s]['fan_motor_eff']) #Setting assuming similar size to previous fan, but new and subject to current standards 
 		  fan_eff = 0.55 #since console unit fans would be considered small, set efficiency based on small fan 
 		  fan.setFanEfficiency(fan_eff)
@@ -462,9 +465,8 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 		  #Set pressure rise based on previous fan, assuming similar pressure drops to before 
 		  fan.setPressureRise(zone_fan_data[thermal_zone.name.to_s]['pressure_rise'])
 	 else #case where there was not a fan present previously 
-		  fan = OpenStudio::Model::FanVariableVolume.new(model)
-		  fan.setName("#{thermal_zone.name} Fan")
-          #autosize other attributes for now, and then set fan and motor efficiencies based on sizing 
+
+          #autosize other attributes for now, and then set fan and motor efficiencies based on sizing
 	  
 	  end 
 	  unitary_system.setSupplyFan(fan)
@@ -685,7 +687,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 			  fan.setFanTotalEfficiency(fan_eff * fan_motor_eff)
 			  #Set pressure rise based on assumption in OS standards for PTACs, a similar unit style 
 			  fan.setPressureRise(330.96) #setting to same value as PTACs in prototype, in PA 
-
+		  
 		  end 
           else
             runner.registerError("Unable to retrieve maximum air flow for fan (#{fan.name})")
