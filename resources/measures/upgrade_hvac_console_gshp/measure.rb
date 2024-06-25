@@ -486,14 +486,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
       # unitary_system.setName("#{thermal_zone.name} Unitary HP")
       # unitary_system.setMaximumSupplyAirTemperature(40.0)
       # unitary_system.addToNode(air_loop_hvac.supplyOutletNode)
-	  
-	  ##AA added the following chunk to avoid using unitary system object
-	  fan.addToNode(air_loop_hvac.supplyOutletNode())
-	  new_heating_coil.addToNode(air_loop_hvac.supplyOutletNode())
-	  new_cooling_coil.addToNode(air_loop_hvac.supplyOutletNode())
-	  
-	  
-	  ###
+	 
 
       # create a diffuser and attach the zone/diffuser pair to the air loop
       diffuser = OpenStudio::Model::AirTerminalSingleDuctUncontrolled.new(model, model.alwaysOnDiscreteSchedule)
@@ -530,8 +523,16 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 
       #get inlet node of unitary system to place preheat coil
       #preheat_coil_location = unitary_system.airInletModelObject.get.to_Node.get 
-	  preheat_coil_location = air_loop_hvac.airInletModelObject.get.to_Node.get #AA modified for when not using unitary system
-      preheat_coil.addToNode(preheat_coil_location)
+	  #preheat_coil_location = air_loop_hvac.airInletModelObject.get.to_Node.get #AA modified for when not using unitary system
+      #preheat_coil.addToNode(preheat_coil_location)
+	  
+	  ##AA added the following chunk to avoid using unitary system object
+	  fan.addToNode(air_loop_hvac.supplyOutletNode())
+	  new_heating_coil.addToNode(air_loop_hvac.supplyOutletNode())
+	  new_cooling_coil.addToNode(air_loop_hvac.supplyOutletNode())
+	  preheat_coil.addToNode(air_loop_hvac.supplyOutletNode())
+	  
+	  ###
 
       # Create a scheduled setpoint manager
       # would result in significantly different loads
