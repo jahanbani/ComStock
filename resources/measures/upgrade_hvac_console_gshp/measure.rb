@@ -670,7 +670,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 
       # fan
       if unitary_sys.supplyFan.is_initialized
-        if unitary_sys.supplyFan.get.to_Fan.is_initialized
+        if unitary_sys.supplyFan.get.to_FanVariableVolume.is_initialized
           fan = unitary_sys.supplyFan.get.to_FanVariableVolume.get
           # air flow
           if fan.maximumFlowRate.is_initialized
