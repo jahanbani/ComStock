@@ -445,12 +445,11 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
       condenser_loop.addDemandBranchForComponent(new_heating_coil)
 
       # Create a new water-to-air ground source heat pump system
-	  ##AA commented out below to try without unitary system 
-      # unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
-      # unitary_system.setControlType('Setpoint')
-      # unitary_system.setCoolingCoil(new_cooling_coil)
-      # unitary_system.setHeatingCoil(new_heating_coil)
-      # unitary_system.setControllingZoneorThermostatLocation(thermal_zone)
+      unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
+      unitary_system.setControlType('Setpoint')
+      unitary_system.setCoolingCoil(new_cooling_coil)
+      unitary_system.setHeatingCoil(new_heating_coil)
+      unitary_system.setControllingZoneorThermostatLocation(thermal_zone)
 	  #add supply fan
 	  #check for existing fan data
 	  fan = OpenStudio::Model::FanVariableVolume.new(model)
@@ -470,30 +469,22 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
           #autosize other attributes for now, and then set fan and motor efficiencies based on sizing
 	  
 	  end 
-	  # unitary_system.setSupplyFan(fan)
-      # unitary_system.setFanPlacement('DrawThrough')
-      # if model.version < OpenStudio::VersionString.new('3.7.0')
-        # unitary_system.setSupplyAirFlowRateMethodDuringCoolingOperation('SupplyAirFlowRate')
-        # unitary_system.setSupplyAirFlowRateMethodDuringHeatingOperation('SupplyAirFlowRate')
-        # unitary_system.setSupplyAirFlowRateMethodWhenNoCoolingorHeatingisRequired('SupplyAirFlowRate')
-      # else
-        # unitary_system.autosizeSupplyAirFlowRateDuringCoolingOperation
-        # unitary_system.autosizeSupplyAirFlowRateDuringHeatingOperation
-        # unitary_system.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired
-      # end
-      # unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOnDiscreteSchedule)
-      # unitary_system.setMaximumOutdoorDryBulbTemperatureforSupplementalHeaterOperation(OpenStudio.convert(40.0, 'F', 'C').get)
-      # unitary_system.setName("#{thermal_zone.name} Unitary HP")
-      # unitary_system.setMaximumSupplyAirTemperature(40.0)
-      # unitary_system.addToNode(air_loop_hvac.supplyOutletNode)
-	  
-	  ##AA added the following chunk to avoid using unitary system object
-	  fan.addToNode(air_loop_hvac.supplyOutletNode())
-	  new_heating_coil.addToNode(air_loop_hvac.supplyOutletNode())
-	  new_cooling_coil.addToNode(air_loop_hvac.supplyOutletNode())
-	  
-	  
-	  ###
+	  unitary_system.setSupplyFan(fan)
+      unitary_system.setFanPlacement('DrawThrough')
+      if model.version < OpenStudio::VersionString.new('3.7.0')
+        unitary_system.setSupplyAirFlowRateMethodDuringCoolingOperation('SupplyAirFlowRate')
+        unitary_system.setSupplyAirFlowRateMethodDuringHeatingOperation('SupplyAirFlowRate')
+        unitary_system.setSupplyAirFlowRateMethodWhenNoCoolingorHeatingisRequired('SupplyAirFlowRate')
+      else
+        unitary_system.autosizeSupplyAirFlowRateDuringCoolingOperation
+        unitary_system.autosizeSupplyAirFlowRateDuringHeatingOperation
+        unitary_system.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired
+      end
+      unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOnDiscreteSchedule)
+      unitary_system.setMaximumOutdoorDryBulbTemperatureforSupplementalHeaterOperation(OpenStudio.convert(40.0, 'F', 'C').get)
+      unitary_system.setName("#{thermal_zone.name} Unitary HP")
+      unitary_system.setMaximumSupplyAirTemperature(40.0)
+      unitary_system.addToNode(air_loop_hvac.supplyOutletNode)
 
       # create a diffuser and attach the zone/diffuser pair to the air loop
       diffuser = OpenStudio::Model::AirTerminalSingleDuctUncontrolled.new(model, model.alwaysOnDiscreteSchedule)
@@ -529,8 +520,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
       preheat_coil.setEfficiency(0.95)
 
       #get inlet node of unitary system to place preheat coil
-      #preheat_coil_location = unitary_system.airInletModelObject.get.to_Node.get 
-	  preheat_coil_location = air_loop_hvac.airInletModelObject.get.to_Node.get #AA modified for when not using unitary system
+      preheat_coil_location = unitary_system.airInletModelObject.get.to_Node.get
       preheat_coil.addToNode(preheat_coil_location)
 
       # Create a scheduled setpoint manager
