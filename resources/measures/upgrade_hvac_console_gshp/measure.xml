@@ -3,8 +3,8 @@
   <schema_version>3.1</schema_version>
   <name>add_console_gshp</name>
   <uid>e7cff13c-fffa-4c6c-9494-938e27f7f335</uid>
-  <version_id>4e8b869a-170b-4df2-a93a-9d1ac357e8bb</version_id>
-  <version_modified>2024-06-10T14:10:11Z</version_modified>
+  <version_id>4d96fabf-771b-43e9-8098-d3ccc1de3f69</version_id>
+  <version_modified>2024-06-26T21:46:11Z</version_modified>
   <xml_checksum>5E2576E4</xml_checksum>
   <class_name>AddConsoleGSHP</class_name>
   <display_name>add_console_gshp</display_name>
