@@ -4,8 +4,8 @@
   <error>Failed to infer measure name from 'C:/Users/aallen/Documents/GitHub/ComStock/resources/measures/upgrade_hvac_packaged_gshp/measure.rb'</error>
   <name>add_packaged_gshp</name>
   <uid>8a5eb1ff-89e5-4fca-9ea3-398ae357bfc7</uid>
-  <version_id>33d1d52a-fee7-4cb6-a361-54496cca22fb</version_id>
-  <version_modified>2024-06-25T16:54:58Z</version_modified>
+  <version_id>37a4ac73-d5b2-4d56-b28a-fd998b0b901a</version_id>
+  <version_modified>2024-05-31T17:18:39Z</version_modified>
   <xml_checksum>5E2576E4</xml_checksum>
   <class_name>AddPackagedGSHP</class_name>
   <display_name>add_packaged_gshp</display_name>
@@ -115,7 +115,7 @@
       <filename>measure.rb</filename>
       <filetype>rb</filetype>
       <usage_type>script</usage_type>
-      <checksum>DBD6DB43</checksum>
+      <checksum>F597D406</checksum>
     </file>
     <file>
       <filename>Ground Loop Heat Pump Performance Data.xlsx</filename>
