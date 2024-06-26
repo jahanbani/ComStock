@@ -478,7 +478,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
         unitary_system.autosizeSupplyAirFlowRateDuringHeatingOperation
         unitary_system.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired
       end
-      unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOnDiscreteSchedule)
+      unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOffDiscreteSchedule)
       unitary_system.setMaximumOutdoorDryBulbTemperatureforSupplementalHeaterOperation(OpenStudio.convert(40.0, 'F', 'C').get)
       unitary_system.setName("#{thermal_zone.name} Unitary HP")
       unitary_system.setMaximumSupplyAirTemperature(40.0)
