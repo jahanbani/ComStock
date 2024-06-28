@@ -378,6 +378,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     supply_air_flow_m3_per_s = 'tmp'
     orig_clg_coil_gross_cap = nil
     orig_htg_coil_gross_cap = nil
+	
+	min_flow = 0.66 #based on airflow turndown for Trane GWS 10-ton unit 
 
     # Loop through each packaged single zone system and replace it with a water-to-air ground source heat pump system
     psz_air_loops.each do |air_loop_hvac|
@@ -609,6 +611,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       fan.setFanEfficiency(fan_tot_eff) # from PNNL
       fan.setPressureRise(fan_static_pressure)
       fan.setMotorEfficiency(fan_mot_eff) unless fan_mot_eff.nil?
+	  fan.setFanPowerMinimumFlowFraction(min_flow) #need to add check for ventilation 
 
       # Create a new water-to-air ground source heat pump system
       unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
