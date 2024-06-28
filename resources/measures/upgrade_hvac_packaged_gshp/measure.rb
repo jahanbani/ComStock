@@ -612,7 +612,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 
       # Create a new water-to-air ground source heat pump system
       unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
-      unitary_system.setControlType('Setpoint')
+      unitary_system.setControlType('Load')
+	  unitary_system.setControllingZoneorThermostatLocation(thermal_zone) 
       unitary_system.setCoolingCoil(new_cooling_coil)
       unitary_system.setHeatingCoil(new_heating_coil)
       unitary_system.setControllingZoneorThermostatLocation(thermal_zone)
