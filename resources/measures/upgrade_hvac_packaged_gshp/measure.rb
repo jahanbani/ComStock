@@ -380,10 +380,37 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     orig_htg_coil_gross_cap = nil
 	
 	min_flow = 0.66 #based on airflow turndown for Trane GWS 10-ton unit 
+	zone_data=Hash.new #create a hash to store zone level hvac data 
 
     # Loop through each packaged single zone system and replace it with a water-to-air ground source heat pump system
     psz_air_loops.each do |air_loop_hvac|
       thermal_zone = air_loop_hvac.thermalZones[0]
+	  #get OA system data for use later 
+	  oa_system = air_loop_hvac.airLoopHVACOutdoorAirSystem.get
+      controller_oa = oa_system.getControllerOutdoorAir
+      oa_flow_m3_per_s = nil
+	  
+	  # get old terminal box
+      if  thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeReheat.is_initialized
+        old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeReheat.get
+      elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.is_initialized
+        old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.get
+      elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.is_initialized
+        old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.get
+      elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.is_initialized
+        old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.get
+      elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.is_initialized
+        old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.get
+      elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.is_initialized
+        old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.get
+      else
+        runner.registerError("Terminal box type for air loop #{air_loop_hvac.name} not supported.")
+        return false
+      end
+	  
+	  # define minimum flow rate needed to maintain ventilation
+      min_oa_flow_ratio = (oa_flow_m3_per_s/old_terminal_sa_flow_m3_per_s)
+	  zone_fan_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'] = min_oa_flow_ratio
 
       hvac_operation_sched = air_loop_hvac.availabilitySchedule
 
@@ -612,6 +639,15 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       fan.setPressureRise(fan_static_pressure)
       fan.setMotorEfficiency(fan_mot_eff) unless fan_mot_eff.nil?
 	  fan.setFanPowerMinimumFlowFraction(min_flow) #need to add check for ventilation 
+	  
+	  #to account for turndown limitations and ventilation requirements
+	  if ! zone_fan_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'].nil?
+		   min_fan_flow_ratio = [min_fan_flow_ratio, min_flow].max
+	  else
+		   min_fan_flow_ratio = min_flow
+	  end 
+	  
+	  fan.setFanPowerMinimumFlowFraction(min_fan_flow_ratio)
 
       # Create a new water-to-air ground source heat pump system
       unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
@@ -622,7 +658,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       unitary_system.setControllingZoneorThermostatLocation(thermal_zone)
       unitary_system.setSupplyFan(fan)
       unitary_system.setFanPlacement(fan_location)
-      unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOnDiscreteSchedule)
+      unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOffDiscreteSchedule)
       unitary_system.setMaximumOutdoorDryBulbTemperatureforSupplementalHeaterOperation(OpenStudio.convert(40.0, 'F',
                                                                                                           'C').get)
       unitary_system.setName("#{air_loop_hvac.name} Unitary HP")
