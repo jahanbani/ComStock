@@ -691,7 +691,9 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 		   min_fan_flow_ratio = min_flow
 	  end 
 	  fan.setFanPowerMinimumFlowRateInputMethod("Fraction")
-	  fan.setFanPowerMinimumFlowFraction(min_flow) #need to add check for ventilation 
+	  fan.setFanPowerMinimumFlowFraction(min_flow) #need to add check for ventilation
+	  #set fan curve coefficients 
+      standard.fan_variable_volume_set_control_type(fan, 'Single Zone VAV Fan ')	  
 	 
 
       # Create a new water-to-air ground source heat pump system
