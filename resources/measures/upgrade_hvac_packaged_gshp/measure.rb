@@ -408,6 +408,16 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
         return false
       end
 	  
+	  # get design supply air flow rate
+      old_terminal_sa_flow_m3_per_s = nil
+      if air_loop_hvac.designSupplyAirFlowRate.is_initialized
+        old_terminal_sa_flow_m3_per_s = air_loop_hvac.designSupplyAirFlowRate.get
+      elsif air_loop_hvac.isDesignSupplyAirFlowRateAutosized
+        old_terminal_sa_flow_m3_per_s = air_loop_hvac.autosizedDesignSupplyAirFlowRate.get
+      else
+        runner.registerError("No sizing data available for air loop #{air_loop_hvac.name} zone terminal box.")
+      end
+	  
 	  # define minimum flow rate needed to maintain ventilation
       min_oa_flow_ratio = (oa_flow_m3_per_s/old_terminal_sa_flow_m3_per_s)
 	  zone_fan_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'] = min_oa_flow_ratio
