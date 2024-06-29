@@ -453,6 +453,9 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	  # define minimum flow rate needed to maintain ventilation
       min_oa_flow_ratio = (oa_flow_m3_per_s/old_terminal_sa_flow_m3_per_s)
 	  zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'] = min_oa_flow_ratio
+	  runner.registerInfo("zone #{thermal_zone.name.to_s}" + "old term sa flow #{old_terminal_sa_flow_m3_per_s}")
+	  runner.registerInfo("zone #{thermal_zone.name.to_s}" + "oa flow  #{oa_flow_m3_per_s}")
+	  runner.registerInfo("zone #{thermal_zone.name.to_s}" + "min airflow ratio #{min_oa_flow_ratio}")
 	  zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] = old_terminal_sa_flow_m3_per_s
 
       hvac_operation_sched = air_loop_hvac.availabilitySchedule
@@ -681,16 +684,15 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       fan.setFanEfficiency(fan_tot_eff) # from PNNL
       fan.setPressureRise(fan_static_pressure)
       fan.setMotorEfficiency(fan_mot_eff) unless fan_mot_eff.nil?
-	  fan.setFanPowerMinimumFlowFraction(min_flow) #need to add check for ventilation 
-	  
-	  #to account for turndown limitations and ventilation requirements
+	   #to account for turndown limitations and ventilation requirements
 	  if ! zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'].nil?
 		   min_fan_flow_ratio = [zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'], min_flow].max
 	  else
 		   min_fan_flow_ratio = min_flow
 	  end 
-	  
-	  fan.setFanPowerMinimumFlowFraction(min_fan_flow_ratio)
+	  fan.setFanPowerMinimumFlowRateInputMethod("Fraction")
+	  fan.setFanPowerMinimumFlowFraction(min_flow) #need to add check for ventilation 
+	 
 
       # Create a new water-to-air ground source heat pump system
       unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
@@ -715,13 +717,6 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
         unitary_system.autosizeSupplyAirFlowRateDuringHeatingOperation
       end
       unitary_system.setSupplyAirFlowRateMethodWhenNoCoolingorHeatingisRequired('SupplyAirFlowRate')
-	  
-	  if ! zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'].nil?
-	     min_airflow_m3_per_s = zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] * zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio']
-	     unitary_system.setSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s) 
-      else 	
-         unitary_system.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s)
-      end 
 	  
       unitary_system.addToNode(air_loop_hvac.supplyOutletNode)
 
@@ -1097,8 +1092,23 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     		runner.registerError("Could not find fan for unitary system (#{unitary_sys.name})")
     		return false
     	end
-    end
-
+      if unitary_sys.airLoopHVAC.is_initialized
+         air_loop_hvac = unitary_sys.airLoopHVAC
+		 thermal_zone = air_loop_hvac.get.thermalZones[0]
+	     if ! zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'].nil? 
+			 min_airflow_m3_per_s = zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] * zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio']
+			 unitary_sys.setSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s) 
+			 runner.registerInfo("zone #{thermal_zone.name.to_s} applying min flow rate #{zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] * zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio']}")
+         else 	
+			 runner.registerInfo("zone #{thermal_zone.name.to_s} autosizing airflow for vent only") 
+			 unitary_sys.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s)
+		end 
+	 else 
+		  runner.registerInfo("zone #{thermal_zone.name.to_s} autosizing airflow for vent only") 
+		  unitary_sys.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s)
+	 
+      end 
+end 
     # add output variable for GHEDesigner
     reporting_frequency = 'Hourly'
     outputVariable = OpenStudio::Model::OutputVariable.new('Plant Temperature Source Component Heat Transfer Rate',
