@@ -408,6 +408,38 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
         return false
       end
 	  
+	  # get design outdoor air flow rate
+	  # loop through thermal zones
+	  oa_flow_m3_per_s = 0
+	  air_loop_hvac.thermalZones.each do |thermal_zone|
+		space = thermal_zone.spaces[0]
+
+		# get zone area
+		fa = thermal_zone.floorArea
+
+		# get zone volume
+		vol = thermal_zone.airVolume
+
+		# get zone design people
+		num_people = thermal_zone.numberOfPeople
+
+		if space.designSpecificationOutdoorAir.is_initialized
+		  dsn_spec_oa = space.designSpecificationOutdoorAir.get
+
+		  # add floor area component
+		  oa_area = dsn_spec_oa.outdoorAirFlowperFloorArea
+		  oa_flow_m3_per_s += oa_area * fa
+
+		  # add per person component
+		  oa_person = dsn_spec_oa.outdoorAirFlowperPerson
+		  oa_flow_m3_per_s += oa_person * num_people
+
+		  # add air change component
+		  oa_ach = dsn_spec_oa.outdoorAirFlowAirChangesperHour
+		  oa_flow_m3_per_s += (oa_ach * vol) / 60
+		end
+	  end
+	  
 	  # get design supply air flow rate
       old_terminal_sa_flow_m3_per_s = nil
       if air_loop_hvac.designSupplyAirFlowRate.is_initialized
@@ -420,7 +452,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	  
 	  # define minimum flow rate needed to maintain ventilation
       min_oa_flow_ratio = (oa_flow_m3_per_s/old_terminal_sa_flow_m3_per_s)
-	  zone_fan_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'] = min_oa_flow_ratio
+	  zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'] = min_oa_flow_ratio
 
       hvac_operation_sched = air_loop_hvac.availabilitySchedule
 
@@ -651,8 +683,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	  fan.setFanPowerMinimumFlowFraction(min_flow) #need to add check for ventilation 
 	  
 	  #to account for turndown limitations and ventilation requirements
-	  if ! zone_fan_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'].nil?
-		   min_fan_flow_ratio = [min_fan_flow_ratio, min_flow].max
+	  if ! zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'].nil?
+		   min_fan_flow_ratio = [zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'], min_flow].max
 	  else
 		   min_fan_flow_ratio = min_flow
 	  end 
