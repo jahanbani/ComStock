@@ -453,6 +453,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	  # define minimum flow rate needed to maintain ventilation
       min_oa_flow_ratio = (oa_flow_m3_per_s/old_terminal_sa_flow_m3_per_s)
 	  zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'] = min_oa_flow_ratio
+	  zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] = old_terminal_sa_flow_m3_per_s
 
       hvac_operation_sched = air_loop_hvac.availabilitySchedule
 
@@ -700,7 +701,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       unitary_system.setControllingZoneorThermostatLocation(thermal_zone)
       unitary_system.setSupplyFan(fan)
       unitary_system.setFanPlacement(fan_location)
-      unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOffDiscreteSchedule)
+      unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOnDiscreteSchedule) ##AA to be modified later 
       unitary_system.setMaximumOutdoorDryBulbTemperatureforSupplementalHeaterOperation(OpenStudio.convert(40.0, 'F',
                                                                                                           'C').get)
       unitary_system.setName("#{air_loop_hvac.name} Unitary HP")
@@ -715,6 +716,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
         unitary_system.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired
       end
       unitary_system.setSupplyAirFlowRateMethodWhenNoCoolingorHeatingisRequired('SupplyAirFlowRate')
+	  min_airflow_m3_per_s = zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] * zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio']
+	  unitary_system.setSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s) #need more checks if this isn't populated? 
       unitary_system.addToNode(air_loop_hvac.supplyOutletNode)
 
       # create a scheduled setpoint manager
