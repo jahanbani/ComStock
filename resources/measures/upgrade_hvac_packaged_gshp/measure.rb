@@ -713,11 +713,16 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       else
         unitary_system.autosizeSupplyAirFlowRateDuringCoolingOperation
         unitary_system.autosizeSupplyAirFlowRateDuringHeatingOperation
-        unitary_system.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired
       end
       unitary_system.setSupplyAirFlowRateMethodWhenNoCoolingorHeatingisRequired('SupplyAirFlowRate')
-	  min_airflow_m3_per_s = zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] * zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio']
-	  unitary_system.setSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s) #need more checks if this isn't populated? 
+	  
+	  if ! zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'].nil?
+	     min_airflow_m3_per_s = zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] * zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio']
+	     unitary_system.setSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s) 
+      else 	
+         unitary_system.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s)
+      end 
+	  
       unitary_system.addToNode(air_loop_hvac.supplyOutletNode)
 
       # create a scheduled setpoint manager
