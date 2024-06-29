@@ -43,6 +43,63 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
   def modeler_description
     'This measure identifies all packaged single zone systems in the model and replaces them with a packaged water-to-air ground source heat pump system.'
   end
+  
+    def thermal_zone_outdoor_airflow_rate(thermal_zone)
+    tot_oa_flow_rate = 0.0
+
+    spaces = thermal_zone.spaces.sort
+
+    sum_floor_area = 0.0
+    sum_number_of_people = 0.0
+    sum_volume = 0.0
+
+    # Variables for merging outdoor air
+    any_max_oa_method = false
+    sum_oa_for_people = 0.0
+    sum_oa_for_floor_area = 0.0
+    sum_oa_rate = 0.0
+    sum_oa_for_volume = 0.0
+
+    # Find common variables for the new space
+    spaces.each do |space|
+      floor_area = space.floorArea
+      sum_floor_area += floor_area
+
+      number_of_people = space.numberOfPeople
+      sum_number_of_people += number_of_people
+
+      volume = space.volume
+      sum_volume += volume
+
+      dsn_oa = space.designSpecificationOutdoorAir
+      next if dsn_oa.empty?
+
+      dsn_oa = dsn_oa.get
+
+      # compute outdoor air rates in case we need them
+      oa_for_people = number_of_people * dsn_oa.outdoorAirFlowperPerson
+      oa_for_floor_area = floor_area * dsn_oa.outdoorAirFlowperFloorArea
+      oa_rate = dsn_oa.outdoorAirFlowRate
+      oa_for_volume = volume * dsn_oa.outdoorAirFlowAirChangesperHour / 3600
+
+      # First check if this space uses the Maximum method and other spaces do not
+      if dsn_oa.outdoorAirMethod == 'Maximum'
+        sum_oa_rate += [oa_for_people, oa_for_floor_area, oa_rate, oa_for_volume].max
+      elsif dsn_oa.outdoorAirMethod == 'Sum'
+        sum_oa_for_people += oa_for_people
+        sum_oa_for_floor_area += oa_for_floor_area
+        sum_oa_rate += oa_rate
+        sum_oa_for_volume += oa_for_volume
+      end
+    end
+
+    tot_oa_flow_rate += sum_oa_for_people
+    tot_oa_flow_rate += sum_oa_for_floor_area
+    tot_oa_flow_rate += sum_oa_rate
+    tot_oa_flow_rate += sum_oa_for_volume
+
+    return tot_oa_flow_rate
+  end
 
   # Define the arguments that the user will input
   def arguments(_model)
@@ -593,6 +650,59 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 
     # remove old PVAV air loops; this must be done after removing zone equipment or it will cause segmentation fault
     pvav_air_loops.each do |pvav_air_loop|
+	  thermal_zones = pvav_air_loop.thermalZones
+	  if pvav_air_loop.autosizedDesignSupplyAirFlowRate.is_initialized #change supply air flow design parameters to match VAV conversion
+	    des_supply_airflow = pvav_air_loop.autosizedDesignSupplyAirFlowRate.get #handle autosized
+      elsif pvav_air_loop.designSupplyAirFlowRate.is_initialized #handle hard-sized
+	   des_supply_airflow = pvav_air_loop.designSupplyAirFlowRate.get
+      end
+	 
+	 air_loop_oa_flow_rate = 0 
+	 
+	  pvav_air_loop.thermalZones.each do |thermal_zone|
+	     zone_oa_flow = thermal_zone_outdoor_airflow_rate(thermal_zone) 
+	     air_loop_oa_flow_rate = air_loop_oa_flow_rate + zone_oa_flow 
+		 zone_data[thermal_zone.name.to_s + 'zone_oa_flow'] = zone_oa_flow 
+	    # runner.registerInfo("air loop #{pvav_air_loop.name.to_s}")
+		# runner.registerInfo("thermal zone #{thermal_zone.name.to_s}")
+		# # get old terminal box
+		# if thermal_zone.airLoopHVACTerminal.is_initialized
+		  # terminal = thermal_zone.airLoopHVACTerminal.get
+		  # if  terminal.to_AirTerminalSingleDuctConstantVolumeReheat.is_initialized
+			# old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeReheat.get
+		  # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.is_initialized
+			# old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.get
+		  # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.is_initialized
+			# old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.get
+		  # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.is_initialized
+			# old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.get
+		  # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.is_initialized
+			# old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.get
+		  # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.is_initialized
+			# old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.get
+		  # else
+			# runner.registerError("Terminal box type for air loop #{air_loop_hvac.name} not supported.")
+			# return false
+		  # end
+		  
+		  # if old_terminal.autosizedMaximumAirFlowRate.is_initialized
+		     # supply_air_flow_rate=old_terminal.autosizedMaximumAirFlowRate.get
+		  # elsif old_terminal.is_initialized
+		     # supply_air_flow_rate=old_terminal.maximumAirFlowRate.get
+		  # end 
+		 # else 
+			# runner.registerError('no terminal units') 
+		# end 
+	end 
+	
+	#temporary work around to set oa ratio 
+    oa_ratio = air_loop_oa_flow_rate/des_supply_airflow
+	pvav_air_loop.thermalZones.each do |thermal_zone|
+	  zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'] = oa_ratio 
+	
+	end 
+	
+	  
       pvav_air_loop.remove
     end
 
@@ -1097,13 +1207,15 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       if unitary_sys.airLoopHVAC.is_initialized
          air_loop_hvac = unitary_sys.airLoopHVAC
 		 thermal_zone = air_loop_hvac.get.thermalZones[0]
-	     if ! zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'].nil? 
+	     if ! zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'].nil? 
 			 min_airflow_m3_per_s = zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] * zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio']
 			 unitary_sys.setSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s) 
 			 runner.registerInfo("zone #{thermal_zone.name.to_s} applying min flow rate #{zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] * zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio']}")
-         else 	
-			 runner.registerInfo("zone #{thermal_zone.name.to_s} autosizing airflow for vent only") 
-			 unitary_sys.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s)
+         elsif ! zone_data[thermal_zone.name.to_s + 'zone_oa_flow'].nil? 
+			 unitary_sys.setSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(zone_data[thermal_zone.name.to_s + 'zone_oa_flow'])
+		else 
+		  runner.registerInfo("zone #{thermal_zone.name.to_s} autosizing airflow for vent only") 
+		  unitary_sys.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s)
 		end 
 	 else 
 		  runner.registerInfo("zone #{thermal_zone.name.to_s} autosizing airflow for vent only") 
