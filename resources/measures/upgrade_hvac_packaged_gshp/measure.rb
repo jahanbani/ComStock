@@ -604,7 +604,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       condenser_loop.addDemandBranchForComponent(new_heating_coil)
 
       # add supply fan
-      fan = OpenStudio::Model::FanConstantVolume.new(model)
+      fan = OpenStudio::Model::FanVariableVolume.new(model)
       fan.setName("#{air_loop_hvac.name} Fan")
       fan.setFanEfficiency(fan_tot_eff) # from PNNL
       fan.setPressureRise(fan_static_pressure)
@@ -612,7 +612,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 
       # Create a new water-to-air ground source heat pump system
       unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
-      unitary_system.setControlType('Setpoint')
+      unitary_system.setControlType('Load')
       unitary_system.setCoolingCoil(new_cooling_coil)
       unitary_system.setHeatingCoil(new_heating_coil)
       unitary_system.setControllingZoneorThermostatLocation(thermal_zone)
@@ -990,8 +990,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 
     	# fan
     	if unitary_sys.supplyFan.is_initialized
-    		if unitary_sys.supplyFan.get.to_FanConstantVolume.is_initialized
-    			fan = unitary_sys.supplyFan.get.to_FanConstantVolume.get
+    		if unitary_sys.supplyFan.get.to_FanVariableVolume.is_initialized
+    			fan = unitary_sys.supplyFan.get.to_FanVariableVolume.get
     			# air flow
     			if fan.maximumFlowRate.is_initialized
     				fan_air_flow = fan.maximumFlowRate.get
@@ -1000,7 +1000,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     				return false
     			end
     		else
-    			runner.registerError("Expecting fan of type FanConstantVolume for (#{unitary_sys.name})")
+    			runner.registerError("Expecting fan of type FanVariableVolume for (#{unitary_sys.name})")
     			return false
     		end
     	else
