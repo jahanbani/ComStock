@@ -671,49 +671,6 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 		# get old terminal box
 	#runner.registerInfo("thermal zone airloop terminal.get #{thermal_zone.airLoopHVACTerminal.get}")
 	
-	     if  thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeReheat.is_initialized
-           old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeReheat.get
-        elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.is_initialized
-           old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.get
-        elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.is_initialized
-          old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.get
-        elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.is_initialized
-          old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.get
-        elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.is_initialized
-          old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.get
-        elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.is_initialized
-          old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.get
-        else
-          runner.registerError("Terminal box type for air loop #{air_loop_hvac.name} not supported.")
-          return false
-        end
-     # if thermal_zone.airLoopHVACTerminal.is_initialized
-		  # #terminal = thermal_zone.airLoopHVACTerminal.get
-      # if  thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeReheat.is_initialized
-        # old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeReheat.get
-      # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.is_initialized
-        # old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.get
-      # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.is_initialized
-        # old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.get
-      # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.is_initialized
-        # old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.get
-      # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.is_initialized
-        # old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.get
-      # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.is_initialized
-        # old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.get
-      # else
-        # runner.registerError("Terminal box type for air loop #{air_loop_hvac.name} not supported.")
-        # return false
-      # end
-		  
-		  # if old_terminal.autosizedMaximumAirFlowRate.is_initialized
-		     # supply_air_flow_rate=old_terminal.autosizedMaximumAirFlowRate.get
-		  # elsif old_terminal.is_initialized
-		     # supply_air_flow_rate=old_terminal.maximumAirFlowRate.get
-		  # end 
-		 # else 
-			# runner.registerError('no terminal units') 
-		# end 
 	end 
 	
 	#temporary work around to set oa ratio 
@@ -771,9 +728,18 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
         sizing_zone.setZoneHeatingDesignSupplyAirTemperature(dsgn_temps['zn_htg_dsgn_sup_air_temp_c'])
         sizing_zone.setZoneCoolingDesignSupplyAirHumidityRatio(0.008)
         sizing_zone.setZoneHeatingDesignSupplyAirHumidityRatio(0.008)
+		
+	     #to account for turndown limitations and ventilation requirements
+	     if ! zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'].nil?
+		   min_fan_flow_ratio = [zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'], min_flow].max
+	     else
+		   min_fan_flow_ratio = min_flow
+	    end 
 
         # create a diffuser and attach the zone/diffuser pair to the air loop
-        diffuser = OpenStudio::Model::AirTerminalSingleDuctUncontrolled.new(model, model.alwaysOnDiscreteSchedule)
+        diffuser = OpenStudio::Model::AirTerminalSingleDuctVAVHeatAndCoolNoReheat.new(model)
+		diffuser.autosizeMaximumAirFlowRate() #autosize maximum airflow rate 
+		diffuser.setZoneMinimumAirFlowFraction(min_fan_flow_ratio) 
         diffuser.setName("#{air_loop_hvac.name} Diffuser")
         air_loop_hvac.multiAddBranchForZone(thermal_zone, diffuser.to_HVACComponent.get)
 
@@ -821,7 +787,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 		   min_fan_flow_ratio = min_flow
 	  end 
 	  fan.setFanPowerMinimumFlowRateInputMethod("Fraction")
-	  fan.setFanPowerMinimumFlowFraction(min_flow) #need to add check for ventilation
+	  fan.setFanPowerMinimumFlowFraction(min_fan_flow_ratio) #need to add check for ventilation
 	  #set fan curve coefficients 
       std.fan_variable_volume_set_control_type(fan, 'Single Zone VAV Fan ')	  
 	 
@@ -1235,13 +1201,15 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 			 unitary_sys.setSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(zone_data[thermal_zone.name.to_s + 'zone_oa_flow'])
 		else 
 		  runner.registerInfo("zone #{thermal_zone.name.to_s} autosizing airflow for vent only") 
-		  unitary_sys.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s)
+		  unitary_sys.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired()
 		end 
 	 else 
 		  runner.registerInfo("zone #{thermal_zone.name.to_s} autosizing airflow for vent only") 
-		  unitary_sys.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s)
+		  unitary_sys.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired()
 	 
       end 
+	  
+	  
 end 
     # add output variable for GHEDesigner
     reporting_frequency = 'Hourly'
