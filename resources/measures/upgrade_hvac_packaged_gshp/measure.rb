@@ -657,33 +657,54 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	   des_supply_airflow = pvav_air_loop.designSupplyAirFlowRate.get
       end
 	 
-	 air_loop_oa_flow_rate = 0 
+	 air_loop_oa_flow_rate = 0
+     runner.registerInfo("des supply airflow #{des_supply_airflow}")	 
 	 
 	  pvav_air_loop.thermalZones.each do |thermal_zone|
 	     zone_oa_flow = thermal_zone_outdoor_airflow_rate(thermal_zone) 
 	     air_loop_oa_flow_rate = air_loop_oa_flow_rate + zone_oa_flow 
 		 zone_data[thermal_zone.name.to_s + 'zone_oa_flow'] = zone_oa_flow 
-	    # runner.registerInfo("air loop #{pvav_air_loop.name.to_s}")
-		# runner.registerInfo("thermal zone #{thermal_zone.name.to_s}")
-		# # get old terminal box
-		# if thermal_zone.airLoopHVACTerminal.is_initialized
-		  # terminal = thermal_zone.airLoopHVACTerminal.get
-		  # if  terminal.to_AirTerminalSingleDuctConstantVolumeReheat.is_initialized
-			# old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeReheat.get
-		  # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.is_initialized
-			# old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.get
-		  # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.is_initialized
-			# old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.get
-		  # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.is_initialized
-			# old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.get
-		  # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.is_initialized
-			# old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.get
-		  # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.is_initialized
-			# old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.get
-		  # else
-			# runner.registerError("Terminal box type for air loop #{air_loop_hvac.name} not supported.")
-			# return false
-		  # end
+		 runner.registerInfo("zone oa flow for #{thermal_zone.name.to_s} zone #{zone_oa_flow }")
+	    runner.registerInfo("air loop #{pvav_air_loop.name.to_s}")
+		runner.registerInfo("thermal zone #{thermal_zone.name.to_s}")
+		runner.registerInfo("thermal zone type #{thermal_zone.class.to_s}")
+		# get old terminal box
+	#runner.registerInfo("thermal zone airloop terminal.get #{thermal_zone.airLoopHVACTerminal.get}")
+	
+	      if  thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeReheat.is_initialized
+        old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeReheat.get
+      elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.is_initialized
+        old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.get
+      elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.is_initialized
+        old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.get
+      elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.is_initialized
+        old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.get
+      elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.is_initialized
+        old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.get
+      elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.is_initialized
+        old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.get
+      else
+        runner.registerError("Terminal box type for air loop #{air_loop_hvac.name} not supported.")
+        return false
+      end
+     # if thermal_zone.airLoopHVACTerminal.is_initialized
+		  # #terminal = thermal_zone.airLoopHVACTerminal.get
+      # if  thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeReheat.is_initialized
+        # old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeReheat.get
+      # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.is_initialized
+        # old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.get
+      # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.is_initialized
+        # old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.get
+      # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.is_initialized
+        # old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.get
+      # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.is_initialized
+        # old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.get
+      # elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.is_initialized
+        # old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.get
+      # else
+        # runner.registerError("Terminal box type for air loop #{air_loop_hvac.name} not supported.")
+        # return false
+      # end
 		  
 		  # if old_terminal.autosizedMaximumAirFlowRate.is_initialized
 		     # supply_air_flow_rate=old_terminal.autosizedMaximumAirFlowRate.get
@@ -697,12 +718,11 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	
 	#temporary work around to set oa ratio 
     oa_ratio = air_loop_oa_flow_rate/des_supply_airflow
+	runner.registerInfo("oa ratio #{oa_ratio}")
 	pvav_air_loop.thermalZones.each do |thermal_zone|
 	  zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'] = oa_ratio 
-	
 	end 
-	
-	  
+
       pvav_air_loop.remove
     end
 
