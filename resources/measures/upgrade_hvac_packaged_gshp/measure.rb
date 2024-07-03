@@ -280,6 +280,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
               return true
             end
           end
+		  runner.registerInfo("pvav air loop #{air_loop_hvac.name.to_s}") 
           runner.registerInfo("Model has a PVAV system, measure will be applicable.") 
           pvav_air_loops << air_loop_hvac
         elsif %w[VAV].any? { |word| air_loop_hvac.name.get.include?(word) }
@@ -301,6 +302,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
             end
           end
           runner.registerInfo("Model has a PVAV system, measure will be applicable.") 
+		  runner.registerInfo("pvav air loop #{air_loop_hvac.name.to_s}") 
           pvav_air_loops << air_loop_hvac
         elsif %w[VAV].any? { |word| air_loop_hvac.name.get.include?(word) }
           runner.registerAsNotApplicable("Model has VAV system, measure is not applicable.")
@@ -375,7 +377,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     ground_loop.setLoadDistributionScheme('SequentialLoad')
     ground_loop_sizing = ground_loop.sizingPlant
     ground_loop_sizing.setLoopType('Condenser') # is this right?
-    ground_loop_sizing.setDesignLoopExitTemperature(18.33) # does this need to change to ~140F?
+    ground_loop_sizing.setDesignLoopExitTemperature(18.33) 
 
     # set fluid as 20% propyleneglycol
     ground_loop.setGlycolConcentration(20)
@@ -438,6 +440,47 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	
 	min_flow = 0.66 #based on airflow turndown for Trane GWS 10-ton unit 
 	zone_data=Hash.new #create a hash to store zone level hvac data 
+	
+	#Get ventilation rates for PVAV systems
+	pvav_air_loops.each do |pvav_air_loop|
+		 thermal_zones = pvav_air_loop.thermalZones
+	  	 pvav_air_loop.thermalZones.each do |thermal_zone|
+	     zone_oa_flow = thermal_zone_outdoor_airflow_rate(thermal_zone) 
+		 zone_data[thermal_zone.name.to_s + 'zone_oa_flow'] = zone_oa_flow 
+		 runner.registerInfo("zone oa flow for #{thermal_zone.name.to_s} zone #{zone_oa_flow }")
+		 if  thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeReheat.is_initialized
+           old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeReheat.get
+         elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.is_initialized
+           old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctConstantVolumeNoReheat.get
+         elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.is_initialized
+          old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolNoReheat.get
+         elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.is_initialized
+          old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVHeatAndCoolReheat.get
+         elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.is_initialized
+          old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.get
+         elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.is_initialized
+          old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.get
+         else
+          runner.registerError("Terminal box type for air loop #{air_loop_hvac.name} not supported.")
+          return false
+        end
+		#get design oa flow rate for previous terminal box to set min oa ratio 
+		old_terminal_sa_flow_m3_per_s = nil
+        if old_terminal.maximumAirFlowRate.is_initialized
+          old_terminal_sa_flow_m3_per_s = old_terminal.maximumAirFlowRate.get
+        elsif old_terminal.isMaximumAirFlowRateAutosized 
+          old_terminal_sa_flow_m3_per_s = old_terminal.autosizedMaximumAirFlowRate.get
+        else
+          runner.registerError("No sizing data available for air loop #{air_loop_hvac.name} zone terminal box.")
+        end
+		
+		zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'] = zone_oa_flow/old_terminal_sa_flow_m3_per_s
+		zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] = old_terminal_sa_flow_m3_per_s
+		
+		runner.registerInfo("old term airflow for #{thermal_zone.name.to_s}" + "#{zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s']}") 
+
+		end 
+	end 
 
     # Loop through each packaged single zone system and replace it with a water-to-air ground source heat pump system
     psz_air_loops.each do |air_loop_hvac|
@@ -560,6 +603,17 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
             runner.registerError("Supply fan type for #{air_loop_hvac.name} not supported.")
             return false
           end
+		  #Get attributes from exisitng supply fan 
+		  pressure_rise = supply_fan.pressureRise
+		  zone_data[thermal_zone.name.to_s] = Hash.new 
+		  zone_data[thermal_zone.name.to_s]['pressure_rise'] = pressure_rise
+		  motor_hp = std.fan_motor_horsepower(supply_fan) #based on existing fan
+		  motor_bhp = std.fan_brake_horsepower(supply_fan)	
+		  fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(supply_fan, motor_bhp)[0] 
+		  zone_data[thermal_zone.name.to_s]['fan_motor_eff']= fan_motor_eff
+		  fan_eff = std.fan_baseline_impeller_efficiency(supply_fan)
+		  zone_data[thermal_zone.name.to_s]['fan_eff']= fan_eff
+		  
           # get the availability schedule
           supply_fan_avail_sched = supply_fan.availabilitySchedule
           if supply_fan_avail_sched.to_ScheduleConstant.is_initialized
@@ -650,35 +704,6 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 
     # remove old PVAV air loops; this must be done after removing zone equipment or it will cause segmentation fault
     pvav_air_loops.each do |pvav_air_loop|
-	  thermal_zones = pvav_air_loop.thermalZones
-	  if pvav_air_loop.autosizedDesignSupplyAirFlowRate.is_initialized #change supply air flow design parameters to match VAV conversion
-	    des_supply_airflow = pvav_air_loop.autosizedDesignSupplyAirFlowRate.get #handle autosized
-      elsif pvav_air_loop.designSupplyAirFlowRate.is_initialized #handle hard-sized
-	   des_supply_airflow = pvav_air_loop.designSupplyAirFlowRate.get
-      end
-	 
-	 air_loop_oa_flow_rate = 0
-     runner.registerInfo("des supply airflow #{des_supply_airflow}")	 
-	 
-	  pvav_air_loop.thermalZones.each do |thermal_zone|
-	     zone_oa_flow = thermal_zone_outdoor_airflow_rate(thermal_zone) 
-	     air_loop_oa_flow_rate = air_loop_oa_flow_rate + zone_oa_flow 
-		 zone_data[thermal_zone.name.to_s + 'zone_oa_flow'] = zone_oa_flow 
-		 runner.registerInfo("zone oa flow for #{thermal_zone.name.to_s} zone #{zone_oa_flow }")
-	     runner.registerInfo("air loop #{pvav_air_loop.name.to_s}")
-		 runner.registerInfo("thermal zone #{thermal_zone.name.to_s}")
-		 runner.registerInfo("thermal zone type #{thermal_zone.class.to_s}")
-		# get old terminal box
-	#runner.registerInfo("thermal zone airloop terminal.get #{thermal_zone.airLoopHVACTerminal.get}")
-	
-	end 
-	
-	#temporary work around to set oa ratio 
-    oa_ratio = air_loop_oa_flow_rate/des_supply_airflow
-	runner.registerInfo("oa ratio #{oa_ratio}")
-	pvav_air_loop.thermalZones.each do |thermal_zone|
-	  zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'] = oa_ratio 
-	end 
 
       pvav_air_loop.remove
     end
