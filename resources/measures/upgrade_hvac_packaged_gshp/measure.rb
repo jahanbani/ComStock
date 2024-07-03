@@ -476,8 +476,6 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 		
 		zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'] = zone_oa_flow/old_terminal_sa_flow_m3_per_s
 		zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] = old_terminal_sa_flow_m3_per_s
-		
-		runner.registerInfo("old term airflow for #{thermal_zone.name.to_s}" + "#{zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s']}") 
 
 		end 
 	end 
@@ -510,35 +508,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	  
 	  # get design outdoor air flow rate
 	  # loop through thermal zones
-	  oa_flow_m3_per_s = 0
-	  air_loop_hvac.thermalZones.each do |thermal_zone|
-		space = thermal_zone.spaces[0]
-
-		# get zone area
-		fa = thermal_zone.floorArea
-
-		# get zone volume
-		vol = thermal_zone.airVolume
-
-		# get zone design people
-		num_people = thermal_zone.numberOfPeople
-
-		if space.designSpecificationOutdoorAir.is_initialized
-		  dsn_spec_oa = space.designSpecificationOutdoorAir.get
-
-		  # add floor area component
-		  oa_area = dsn_spec_oa.outdoorAirFlowperFloorArea
-		  oa_flow_m3_per_s += oa_area * fa
-
-		  # add per person component
-		  oa_person = dsn_spec_oa.outdoorAirFlowperPerson
-		  oa_flow_m3_per_s += oa_person * num_people
-
-		  # add air change component
-		  oa_ach = dsn_spec_oa.outdoorAirFlowAirChangesperHour
-		  oa_flow_m3_per_s += (oa_ach * vol) / 60
-		end
-	  end
+	  oa_flow_m3_per_s = thermal_zone_outdoor_airflow_rate(thermal_zone) 
 	  
 	  # get design supply air flow rate
       old_terminal_sa_flow_m3_per_s = nil
@@ -551,6 +521,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       end
 	  
 	  # define minimum flow rate needed to maintain ventilation
+	  zone_data[thermal_zone.name.to_s + 'zone_oa_flow'] = oa_flow_m3_per_s
       min_oa_flow_ratio = (oa_flow_m3_per_s/old_terminal_sa_flow_m3_per_s)
 	  zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'] = min_oa_flow_ratio
 	  runner.registerInfo("zone #{thermal_zone.name.to_s}" + "old term sa flow #{old_terminal_sa_flow_m3_per_s}")
@@ -815,6 +786,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	  fan.setFanPowerMinimumFlowFraction(min_fan_flow_ratio) #need to add check for ventilation
 	  #set fan curve coefficients 
       std.fan_variable_volume_set_control_type(fan, 'Single Zone VAV Fan ')	  
+	  zone_data[thermal_zone.name.to_s + 'min_fan_flow_ratio'] = min_fan_flow_ratio
 	 
 
       # Create a new water-to-air ground source heat pump system
@@ -1218,24 +1190,34 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       if unitary_sys.airLoopHVAC.is_initialized
          air_loop_hvac = unitary_sys.airLoopHVAC
 		 thermal_zone = air_loop_hvac.get.thermalZones[0]
-	     if ! zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'].nil? 
-			 min_airflow_m3_per_s = zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] * zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio']
-			 unitary_sys.setSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_airflow_m3_per_s) 
-			 runner.registerInfo("zone #{thermal_zone.name.to_s} applying min flow rate #{zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] * zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio']}")
-         elsif ! zone_data[thermal_zone.name.to_s + 'zone_oa_flow'].nil? 
-			 unitary_sys.setSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(zone_data[thermal_zone.name.to_s + 'zone_oa_flow'])
-		else 
+		 #Set airflow for operation when neither hearing or cooling required based on the maximum of the ratio of the required ventilation airflow, or the fan minimum turndown 
+	     if ! (zone_data[thermal_zone.name.to_s + 'zone_oa_flow'].nil?) 
+		     if unitary_sys.autosizedSupplyAirFlowRateDuringCoolingOperation.is_initialized
+			    design_airflow_rate = unitary_sys.autosizedSupplyAirFlowRateDuringCoolingOperation.get
+				min_fan_turndown_airflow = min_flow * design_airflow_rate
+				min_system_flow = [min_fan_turndown_airflow, zone_data[thermal_zone.name.to_s + 'zone_oa_flow']].max  
+			    unitary_sys.setSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(min_system_flow)  
+				runner.registerInfo("zone name for oa  #{thermal_zone.name.to_s}")
+				runner.registerInfo("min zone oa flow  #{zone_data[thermal_zone.name.to_s + 'zone_oa_flow']}")
+				runner.registerInfo("min_fan_turndown_airflow #{min_fan_turndown_airflow}")
+			    runner.registerInfo("min system flow #{min_system_flow}")
+		     elsif unitary_sys.supplyAirFlowRateDuringCoolingOperation.is_initialized
+			    design_airflow_rate = unitary_sys.autosizedSupplyAirFlowRateDuringCoolingOperation.get 
+				min_fan_turndown_airflow = min_flow * design_airflow_rate
+				min_system_flow = [min_fan_turndown_airflow, zone_data[thermal_zone.name.to_s + 'zone_oa_flow']].max 
+			    unitary_sys.setSupplyAirFlowRateWhenNoCoolingorHeatingisRequired(governing_min_ratio*design_airflow_rate)
+				runner.registerInfo("min system flow #{min_system_flow}")
+             else 				
+		         unitary_sys.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired() 
+		         runner.registerInfo("zone #{thermal_zone.name.to_s} autosizing airflow for vent only") 
+		    end 
+	    else 
 		  runner.registerInfo("zone #{thermal_zone.name.to_s} autosizing airflow for vent only") 
 		  unitary_sys.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired()
-		end 
-	 else 
-		  runner.registerInfo("zone #{thermal_zone.name.to_s} autosizing airflow for vent only") 
-		  unitary_sys.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired()
-	 
-      end 
-	  
-	  
-end 
+	 end   
+    end 
+	
+	end 
     # add output variable for GHEDesigner
     reporting_frequency = 'Hourly'
     outputVariable = OpenStudio::Model::OutputVariable.new('Plant Temperature Source Component Heat Transfer Rate',
