@@ -443,6 +443,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	
 	#Get ventilation rates for PVAV systems
 	pvav_air_loops.each do |pvav_air_loop|
+	     pfp_box = false 
 		 thermal_zones = pvav_air_loop.thermalZones
 	  	 pvav_air_loop.thermalZones.each do |thermal_zone|
 	     zone_oa_flow = thermal_zone_outdoor_airflow_rate(thermal_zone) 
@@ -460,19 +461,32 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
           old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.get
          elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.is_initialized
           old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.get
+		 elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctParallelPIUReheat.is_initialized
+          old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctParallelPIUReheat.get
+		  pfp_box = true 
          else
           runner.registerError("Terminal box type for air loop #{air_loop_hvac.name} not supported.")
           return false
         end
 		#get design oa flow rate for previous terminal box to set min oa ratio 
 		old_terminal_sa_flow_m3_per_s = nil
-        if old_terminal.maximumAirFlowRate.is_initialized
-          old_terminal_sa_flow_m3_per_s = old_terminal.maximumAirFlowRate.get
-        elsif old_terminal.isMaximumAirFlowRateAutosized 
-          old_terminal_sa_flow_m3_per_s = old_terminal.autosizedMaximumAirFlowRate.get
-        else
-          runner.registerError("No sizing data available for air loop #{air_loop_hvac.name} zone terminal box.")
-        end
+		if ! pfp_box 
+			if old_terminal.maximumAirFlowRate.is_initialized 
+			  old_terminal_sa_flow_m3_per_s = old_terminal.maximumAirFlowRate.get
+			elsif old_terminal.isMaximumAirFlowRateAutosized 
+			  old_terminal_sa_flow_m3_per_s = old_terminal.autosizedMaximumAirFlowRate.get
+			else
+			  runner.registerError("No sizing data available for air loop #{air_loop_hvac.name} zone terminal box.")
+			end
+		elsif pfp_box
+			if old_terminal.maximumPrimaryAirFlowRate.is_initialized 
+			  old_terminal_sa_flow_m3_per_s = old_terminal.maximumPrimaryAirFlowRate.get
+			elsif old_terminal.isMaximumPrimaryAirFlowRateAutosized 
+			  old_terminal_sa_flow_m3_per_s = old_terminal.autosizedMaximumPrimaryAirFlowRate.get
+			else
+			  runner.registerError("No sizing data available for air loop #{air_loop_hvac.name} zone terminal box.")
+			end
+		end 
 		
 		zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'] = zone_oa_flow/old_terminal_sa_flow_m3_per_s
 		zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] = old_terminal_sa_flow_m3_per_s
@@ -501,6 +515,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
         old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVNoReheat.get
       elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.is_initialized
         old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctVAVReheat.get
+	  elsif thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctParallelPIUReheat.is_initialized
+        old_terminal = thermal_zone.airLoopHVACTerminal.get.to_AirTerminalSingleDuctParallelPIUReheat.get
       else
         runner.registerError("Terminal box type for air loop #{air_loop_hvac.name} not supported.")
         return false
