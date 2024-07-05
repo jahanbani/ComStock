@@ -444,8 +444,24 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	#Get ventilation rates for PVAV systems
 	pvav_air_loops.each do |pvav_air_loop|
 		 thermal_zones = pvav_air_loop.thermalZones
+		 prev_pressure_rise = 0 
+		 if pvav_air_loop.supplyFan.is_initialized
+		    fan = pvav_air_loop.supplyFan.get
+			runner.registerInfo("fan" + "#{fan}") 
+			if fan.to_FanVariableVolume.is_initialized
+			   fan = fan.to_FanVariableVolume.get
+			   prev_pressure_rise = fan.pressureRise 
+			end
+		 end 
+		 
 	  	 pvav_air_loop.thermalZones.each do |thermal_zone|
+		     zone_data[thermal_zone.name.to_s] = Hash.new #creating as a placeholder 
 			 pfp_box = false 
+			 
+			 if prev_pressure_rise > 0 
+			    zone_data[thermal_zone.name.to_s]['prev_pressure_rise'] = prev_pressure_rise
+			 end 
+			 
 			 zone_oa_flow = thermal_zone_outdoor_airflow_rate(thermal_zone) 
 			 zone_data[thermal_zone.name.to_s + 'zone_oa_flow'] = zone_oa_flow 
 			 runner.registerInfo("zone oa flow for #{thermal_zone.name.to_s} zone #{zone_oa_flow }")
@@ -490,7 +506,6 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 			
 			zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'] = zone_oa_flow/old_terminal_sa_flow_m3_per_s
 			zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] = old_terminal_sa_flow_m3_per_s
-
 		end 
 	end 
 
@@ -800,9 +815,14 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       # add supply fan
       fan = OpenStudio::Model::FanVariableVolume.new(model)
       fan.setName("#{air_loop_hvac.name} Fan")
-      fan.setFanEfficiency(fan_tot_eff) # from PNNL
-      fan.setPressureRise(fan_static_pressure)
-      fan.setMotorEfficiency(fan_mot_eff) unless fan_mot_eff.nil?
+	  #set pressure rise based on previous fan, since assuming distribution system characteristics remain basically the same 
+	  #check for a similar fan in the baseline to set these parameters based on--otherwise, will do so after sizing 
+	  if ! zone_data[thermal_zone.name.to_s]['pressure_rise'].nil?
+		  fan.setPressureRise(zone_data[thermal_zone.name.to_s]['pressure_rise'])
+		  #Set fan motor eff and fan total eff based on current standards applied to previous fan sizing, assuming sizing will be similar and new fan being installed 
+		  fan.setFanTotalEfficiency(zone_data[thermal_zone.name.to_s]['fan_eff']*zone_data[thermal_zone.name.to_s]['fan_motor_eff']) 
+		  fan.setMotorEfficiency(zone_data[thermal_zone.name.to_s]['fan_motor_eff']) 
+	  end 
 	   #to account for turndown limitations and ventilation requirements
 	  if ! zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'].nil?
 		   min_fan_flow_ratio = [zone_data[thermal_zone.name.to_s + 'min_oa_flow_ratio'], min_flow].max
@@ -1199,6 +1219,25 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
     	if unitary_sys.supplyFan.is_initialized
     		if unitary_sys.supplyFan.get.to_FanVariableVolume.is_initialized
     			fan = unitary_sys.supplyFan.get.to_FanVariableVolume.get
+				air_loop = unitary_sys.airLoopHVAC.get
+				thermal_zone = air_loop.thermalZones[0] #single zone system 
+				if zone_data[thermal_zone.name.to_s]['pressure_rise'].nil?  #set fan parameters if haven't been already set due to not having a comparable fan in the baseline 
+				   motor_hp = std.fan_motor_horsepower(fan)
+				   motor_bhp = std.fan_brake_horsepower(fan)
+				   fan_motor_eff = std.fan_standard_minimum_motor_efficiency_and_size(fan, motor_bhp)[0] 
+				   fan_eff = std.fan_baseline_impeller_efficiency(fan)
+				   fan.setMotorEfficiency(fan_motor_eff) 
+				   fan.setFanTotalEfficiency(fan_motor_eff * fan_eff) 
+				   fan.setPressureRise(622.1) #pressure rise in pascals for Packaged_RTU_SZ_AC_CAV_Fan object 
+				   #adjust pressure rise if needed
+				   allowable_fan_bhp = std.air_loop_hvac_allowable_system_brake_horsepower(air_loop) #need to make sure type is named appropriately  
+				   allowable_power_w = allowable_fan_bhp * 746 / fan.motorEfficiency 
+				   std.fan_adjust_pressure_rise_to_meet_fan_power(fan, allowable_power_w)
+				   new_pressure_rise = fan.pressureRise 
+				   if ! zone_data[thermal_zone.name.to_s]['prev_pressure_rise'].nil? #cap at previous fan pressure rise in PVAV systems 
+				        fan.setPressureRise([new_pressure_rise, zone_data[thermal_zone.name.to_s]['prev_pressure_rise']].min) 
+				   end 
+				end 
     			# air flow
     			if fan.maximumFlowRate.is_initialized
     				fan_air_flow = fan.maximumFlowRate.get
