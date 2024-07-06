@@ -444,6 +444,8 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	#Get ventilation rates for PVAV systems
 	pvav_air_loops.each do |pvav_air_loop|
 		 thermal_zones = pvav_air_loop.thermalZones
+		 #get the air loop HVAC availability schedule 
+         hvac_operation_sched = pvav_air_loop.availabilitySchedule
 		 prev_pressure_rise = 0 
 		 if pvav_air_loop.supplyFan.is_initialized
 		    fan = pvav_air_loop.supplyFan.get
@@ -456,6 +458,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 		 
 	  	 pvav_air_loop.thermalZones.each do |thermal_zone|
 		     zone_data[thermal_zone.name.to_s] = Hash.new #creating as a placeholder 
+			 zone_data[thermal_zone.name.to_s + 'schedule'] = hvac_operation_sched #save operation schedule from main air loop for use later 
 			 pfp_box = false 
 			 
 			 if prev_pressure_rise > 0 
@@ -571,7 +574,9 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 	  runner.registerInfo("zone #{thermal_zone.name.to_s}" + "min airflow ratio #{min_oa_flow_ratio}")
 	  zone_data[thermal_zone.name.to_s + 'old_term_sa_flow_m3_per_s'] = old_terminal_sa_flow_m3_per_s
 
+      #get the air loop HVAC availability schedule and save it 
       hvac_operation_sched = air_loop_hvac.availabilitySchedule
+	  zone_data[thermal_zone.name.to_s + 'schedule'] = hvac_operation_sched
 
       # for unitary systems
       if air_loop_hvac_unitary_system?(air_loop_hvac)
@@ -695,7 +700,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
           # set control zone to the thermal zone. This will be used in new unitary system object
           control_zone = air_loop_hvac.thermalZones[0]
           # set unitary availability schedule to be always on. This will be used in new unitary system object.
-          unitary_availability_sched = model.alwaysOnDiscreteSchedule
+          #unitary_availability_sched = model.alwaysOnDiscreteSchedule ##AA no longer needed since setting schedule based on previous air loop's schedule 
         end
       end
 
@@ -743,16 +748,20 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 
       # set always on schedule; this will be used in other object definitions
       always_on = model.alwaysOnDiscreteSchedule
-      supply_fan_avail_sched = model.alwaysOnDiscreteSchedule
+      supply_fan_avail_sched = model.alwaysOnDiscreteSchedule #Needed due to the coil's requirement for consistent airflow 
       fan_location = 'DrawThrough'
 
       if thermal_zone.airLoopHVAC.is_initialized
         air_loop_hvac = thermal_zone.airLoopHVAC.get
+		air_loop_hvac.setAvailabilitySchedule(zone_data[thermal_zone.name.to_s + 'schedule']) 
+		runner.registerInfo("setting schedule") 
       else
         # create new air loop for unitary system
         air_loop_hvac = OpenStudio::Model::AirLoopHVAC.new(model)
         air_loop_hvac.setName("#{thermal_zone.name} Air Loop")
         air_loop_sizing = air_loop_hvac.sizingSystem
+		#Set schedule based on that zone's previous schedule 
+		air_loop_hvac.setAvailabilitySchedule(zone_data[thermal_zone.name.to_s + 'schedule']) 
 
         # zone sizing
         # adjusted zone design temperatures for ptac
@@ -845,7 +854,7 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
       unitary_system.setControllingZoneorThermostatLocation(thermal_zone)
       unitary_system.setSupplyFan(fan)
       unitary_system.setFanPlacement(fan_location)
-      unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOnDiscreteSchedule) ##AA to be modified later 
+      unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOnDiscreteSchedule) ##needs to be set this way for the water-to-air heat pump coils 
       unitary_system.setMaximumOutdoorDryBulbTemperatureforSupplementalHeaterOperation(OpenStudio.convert(40.0, 'F',
                                                                                                           'C').get)
       unitary_system.setName("#{air_loop_hvac.name} Unitary HP")
