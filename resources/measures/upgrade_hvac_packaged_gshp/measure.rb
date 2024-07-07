@@ -446,6 +446,14 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 		 thermal_zones = pvav_air_loop.thermalZones
 		 #get the air loop HVAC availability schedule 
          hvac_operation_sched = pvav_air_loop.availabilitySchedule
+		 if hvac_operation_sched.to_ScheduleConstant.is_initialized
+            hvac_operation_sched = hvac_operation_sched.to_ScheduleConstant.get
+          elsif hvac_operation_sched.to_ScheduleRuleset.is_initialized
+            hvac_operation_sched = hvac_operation_sched.to_ScheduleRuleset.get
+          else
+            runner.registerError("Air loop availability schedule for #{air_loop_hvac.name} not supported.")
+          return false
+         end
 		 prev_pressure_rise = 0 
 		 if pvav_air_loop.supplyFan.is_initialized
 		    fan = pvav_air_loop.supplyFan.get
