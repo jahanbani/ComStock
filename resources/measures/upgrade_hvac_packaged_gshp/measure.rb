@@ -576,6 +576,14 @@ class AddPackagedGSHP < OpenStudio::Measure::ModelMeasure
 
       #get the air loop HVAC availability schedule and save it 
       hvac_operation_sched = air_loop_hvac.availabilitySchedule
+	  if hvac_operation_sched.to_ScheduleConstant.is_initialized
+            hvac_operation_sched = hvac_operation_sched.to_ScheduleConstant.get
+      elsif hvac_operation_sched.to_ScheduleRuleset.is_initialized
+            hvac_operation_sched = hvac_operation_sched.to_ScheduleRuleset.get
+      else
+            runner.registerError("Air loop availability schedule for #{air_loop_hvac.name} not supported.")
+          return false
+      end
 	  zone_data[thermal_zone.name.to_s + 'schedule'] = hvac_operation_sched
 
       # for unitary systems
