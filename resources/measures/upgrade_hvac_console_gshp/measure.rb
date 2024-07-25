@@ -134,7 +134,6 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
     end
 	
 	zone_fan_data=Hash.new 
-	zone_sched_data=Hash.new 
 
     if all_air_loops.empty?
       runner.registerInfo("Model does not have any air loops. Get list of PTAC, PTHP, Unit Heater, or Baseboard Electric equipment to delete.")
@@ -158,8 +157,6 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 				  zone_fan_data[thermal_zone.name.to_s]['fan_motor_eff']= fan_motor_eff
 				  fan_eff = std.fan_baseline_impeller_efficiency(sup_fan)
 				  zone_fan_data[thermal_zone.name.to_s]['fan_eff']= fan_eff
-				  #get schedules
-				  
 		  end 
         end
       end
@@ -305,7 +302,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
     # Create and add a pump to the loop
     condenser_pump = OpenStudio::Model::PumpVariableSpeed.new(model)
     condenser_pump.setName('Condenser loop circulation pump')
-    condenser_pump.setPumpControlType('Continuous')
+    condenser_pump.setPumpControlType('Intermittent')
     condenser_pump.setRatedPumpHead(44834.7) # 15 ft for primary pump for a primary-secondary system based on Appendix G; does this need to change?
     condenser_pump.addToNode(condenser_loop.supplyInletNode)
 
@@ -340,7 +337,6 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
     # Create and add a pump to the loop
     ground_pump = OpenStudio::Model::PumpConstantSpeed.new(model)
     ground_pump.setName('Ground loop circulation pump')
-    ground_pump.setPumpControlType('Continuous')
     ground_pump.setRatedPumpHead(44834.7) # 15 ft for primary pump for a primary-secondary system based on Appendix G; does this need to change?
     ground_pump.addToNode(ground_loop.supplyInletNode)
 
@@ -447,15 +443,14 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 
       # Create a new water-to-air ground source heat pump system
       unitary_system = OpenStudio::Model::AirLoopHVACUnitarySystem.new(model)
-      #unitary_system.setControlType('Setpoint')
-	  unitary_system.setControlType('Load Based')
+      unitary_system.setControlType('Setpoint')
       unitary_system.setCoolingCoil(new_cooling_coil)
       unitary_system.setHeatingCoil(new_heating_coil)
       unitary_system.setControllingZoneorThermostatLocation(thermal_zone)
 	  #add supply fan
 	  #check for existing fan data
 	  if  zone_fan_data.key?(thermal_zone.name.to_s) #[thermal_zone.name.to_s].exists?
-		  fan = OpenStudio::Model::FanOnOff.new(model)
+		  fan = OpenStudio::Model::FanConstantVolume.new(model)
 		  fan.setName("#{thermal_zone.name} Fan")
 		  fan.setMotorEfficiency(zone_fan_data[thermal_zone.name.to_s]['fan_motor_eff']) #Setting assuming similar size to previous fan, but new and subject to current standards 
 		  fan_eff = 0.55 #since console unit fans would be considered small, set efficiency based on small fan 
@@ -464,7 +459,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 		  #Set pressure rise based on previous fan, assuming similar pressure drops to before 
 		  fan.setPressureRise(zone_fan_data[thermal_zone.name.to_s]['pressure_rise'])
 	 else #case where there was not a fan present previously 
-		  fan = OpenStudio::Model::FanOnOff.new(model)
+		  fan = OpenStudio::Model::FanConstantVolume.new(model)
 		  fan.setName("#{thermal_zone.name} Fan")
           #autosize other attributes for now, and then set fan and motor efficiencies based on sizing 
 	  
@@ -480,7 +475,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
         unitary_system.autosizeSupplyAirFlowRateDuringHeatingOperation
         unitary_system.autosizeSupplyAirFlowRateWhenNoCoolingorHeatingisRequired
       end
-      unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOffDiscreteSchedule)
+      unitary_system.setSupplyAirFanOperatingModeSchedule(model.alwaysOnDiscreteSchedule)
       unitary_system.setMaximumOutdoorDryBulbTemperatureforSupplementalHeaterOperation(OpenStudio.convert(40.0, 'F', 'C').get)
       unitary_system.setName("#{thermal_zone.name} Unitary HP")
       unitary_system.setMaximumSupplyAirTemperature(40.0)
@@ -672,8 +667,8 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
 
       # fan
       if unitary_sys.supplyFan.is_initialized
-        if unitary_sys.supplyFan.get.to_FanOnOff.is_initialized
-          fan = unitary_sys.supplyFan.get.to_FanOnOff.get
+        if unitary_sys.supplyFan.get.to_FanConstantVolume.is_initialized
+          fan = unitary_sys.supplyFan.get.to_FanConstantVolume.get
           # air flow
           if fan.maximumFlowRate.is_initialized
             fan_air_flow = fan.maximumFlowRate.get
@@ -694,7 +689,7 @@ class AddConsoleGSHP < OpenStudio::Measure::ModelMeasure
             return false
           end
         else
-          runner.registerError("Expecting fan of type FanOnOff for (#{unitary_sys.name})")
+          runner.registerError("Expecting fan of type FanConstantVolume for (#{unitary_sys.name})")
           return false
         end
       else
