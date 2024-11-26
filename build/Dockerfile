@@ -2,7 +2,7 @@
 # See top level LICENSE.txt file for license terms.
 
 # OpenStudio base image (https://hub.docker.com/r/nrel/openstudio/tags)
-FROM nrel/openstudio:3.8.0 as os-base
+FROM nrel/openstudio:3.9.0 as os-base
 
 LABEL maintainer="Henry (Ry) Horsey henry.horsey@nrel.gov"
 
@@ -31,9 +31,9 @@ RUN rm -rf /var/oscli/gems/ruby/3.2.0/bundler/gems/**/.git \
 # Create a slimmer container without development libraries leftover by OpenStudio
 FROM ubuntu:20.04 AS os-comstock
 
-ARG OPENSTUDIO_VERSION=3.8.0
+ARG OPENSTUDIO_VERSION=3.9.0
 ARG OPENSTUDIO_VERSION_EXT=""
-ENV OPENSTUDIO_VERSION=3.8.0
+ENV OPENSTUDIO_VERSION=3.9.0
 
 # copy executable and energyplus from install
 COPY --from=os-base /usr/local/openstudio-${OPENSTUDIO_VERSION}${OPENSTUDIO_VERSION_EXT}/ /usr/local/openstudio-${OPENSTUDIO_VERSION}${OPENSTUDIO_VERSION_EXT}/

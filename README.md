@@ -55,11 +55,11 @@ This is needed if you are a developer making changes to `openstudio-standards` o
 3. Connect Ruby to OpenStudio:
 	1. **On Mac**:
 	2. Create a file called `openstudio.rb`
-	3. Contents: `require "/Applications/openstudio-3.8.0/Ruby/openstudio.rb"` Modify `3.8.0` to the version you installed.
+	3. Contents: `require "/Applications/openstudio-3.9.0/Ruby/openstudio.rb"` Modify `3.9.0` to the version you installed.
 	4. Save it here: `/usr/lib/ruby/site_ruby/openstudio.rb`
 	5. **On Windows**:
 	6. Create a file called `openstudio.rb`
-	7. Contents: `require "C:/openstudio-3.8.0/Ruby/openstudio.rb"`  Modify `3.8.0` to the version you installed.
+	7. Contents: `require "C:/openstudio-3.9.0/Ruby/openstudio.rb"`  Modify `3.9.0` to the version you installed.
 	8. Save it here: `C:/Ruby32-x64/lib/ruby/site_ruby/openstudio.rb`
 
 4. `gem install bundler` This installs the `bundler` ruby gem.
