@@ -446,6 +446,8 @@ class Apportion(NamingMixin, UnitsMixin, S3UtilitiesMixin):
         # Assign random values from 0 to 1 to each row. This will be used for assignment to actual tracts.
         # The random values are then sorted because the join will be an "as_of" join that requires left 
         # and right dataframes to be sorted by the join keys.
+        # Set the numpy random seed to make the results more predictable - note this is bad for Ry and Hernan's work
+        np.random.seed(12345)
         null_tracts = df.loc[df['tract'].isnull()]
         null_tracts['random_values'] = np.random.rand(len(null_tracts))
         null_tracts = null_tracts.sort_values(['random_values'])
@@ -570,6 +572,8 @@ class Apportion(NamingMixin, UnitsMixin, S3UtilitiesMixin):
 
         # Use the merged probabilities to sample in fuel type
         # Note this can be made fuel type enumeration agnostic by looping over fcols but it is very not readable
+        # Set the numpy random seed - note this is bad for Ry and Hernan's work
+        np.random.seed(54321)
         df.loc[: , 'ft_rand'] = np.random.rand(df.shape[0])
         df.loc[:, 'heating_fuel'] = 'DistrictHeating'
         df.loc[df.loc[:, 'ft_rand'] >= df.loc[:, 'DistrictHeating'], 'heating_fuel'] = 'Electricity'
@@ -650,14 +654,26 @@ class Apportion(NamingMixin, UnitsMixin, S3UtilitiesMixin):
         buckets = pd.concat([buckets, additional_buckets])
         name_mapper = {v: k for k, v in self.BUILDING_TYPE_NAME_MAPPER.items()}
         buckets.loc[:, 'building_type'] = buckets.building_type.map(name_mapper)
+        if not buckets.drop_duplicates(keep='first').shape[0] == buckets.shape[0]:
+            raise RuntimeError('Duplicates in bucket specification. Please debug.')
         now = datetime.now()
         date = now.strftime("%Y%m%d-%H%m")
+
+        # Remove buggy CA problem children:
+        # remove 103, hospital, size_bin 0
+        buckets = buckets.loc[~(
+            (buckets.sampling_region == 103) & (buckets.building_type == 'hospital') & (buckets.size_bin == 0)
+        ), :]
+        # remove 110, large_hotel, size_bin 1
+        buckets = buckets.loc[~(
+            (buckets.sampling_region == 110) & (buckets.building_type == 'large_hotel') & (buckets.size_bin == 1)
+        ), :]
+        buckets = buckets.reset_index(drop=True)
+
         for n_sample in n_samples:
             to_write = buckets.loc[buckets.index.repeat(n_sample), :]
-            # remove 103, hospital, size_bin 0
-            # remove 110, large_hotel, size_bin 1
+            print('Number of copies of each row groupbed by count - if multiple enteries there is an error:')
             print(to_write.loc[to_write.index.repeat(n_sample), :].value_counts().value_counts())
-            breakpoint()
             to_write = to_write.rename(columns={'system_type': 'hvac_system_type'})
             to_write = to_write.reset_index(drop=True)
             out_file = os.path.join(
