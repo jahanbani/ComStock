@@ -49,7 +49,7 @@ def main():
     #comstock.calculate_weighted_columnal_values()
 
     # Uncomment whichever to write results to disk:
-    comstock.create_national_aggregation()
+    # comstock.create_national_aggregation()
     # comstock.create_geospatially_resolved_aggregations(comstock.STATE_ID, pretty_geo_col_name='state_id')
     # comstock.create_geospatially_resolved_aggregations(comstock.COUNTY_ID, pretty_geo_col_name='county_id')
 

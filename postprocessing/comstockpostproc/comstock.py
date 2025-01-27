@@ -574,7 +574,7 @@ class ComStock(NamingMixin, UnitsMixin, GasCorrectionModelMixin, S3UtilitiesMixi
             for c, dt in up_res.schema.items():
                 if 'applicable' in c:
                     logger.info(f'For {c}: Nulls set to False in upgrade, and its type is {dt}')
-                    if dt == pl.Null or dt == pl.Boolean:
+                    if dt == pl.Null or dt == pl.Boolean or dt == pl.Int64:
                         logger.debug(f'For {c}: Nulls set to False (Boolean) in baseline')
                         up_res = up_res.with_columns([pl.col(c).fill_null(pl.lit(False))])
                     elif dt == pl.Utf8:
